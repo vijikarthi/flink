@@ -61,7 +61,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -338,26 +337,8 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 
 	@Override
 	public YarnClusterClient deploy() {
-
 		try {
-
-			UserGroupInformation.setConfiguration(conf);
-			UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
-
-			if (UserGroupInformation.isSecurityEnabled()) {
-				if (!ugi.hasKerberosCredentials()) {
-					throw new YarnDeploymentException("In secure mode. Please provide Kerberos credentials in order to authenticate. " +
-						"You may use kinit to authenticate and request a TGT from the Kerberos server.");
-				}
-				return ugi.doAs(new PrivilegedExceptionAction<YarnClusterClient>() {
-					@Override
-					public YarnClusterClient run() throws Exception {
-						return deployInternal();
-					}
-				});
-			} else {
-				return deployInternal();
-			}
+			return deployInternal();
 		} catch (Exception e) {
 			throw new RuntimeException("Couldn't deploy Yarn cluster", e);
 		}
@@ -615,7 +596,22 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 		fs.setPermission(sessionFilesDir, permission); // set permission for path.
 
 		// setup security tokens
-		Utils.setTokensFor(amContainer, paths, conf);
+		LocalResource keytabResource = null;
+		Path remotePathKeytab = null;
+		String keytab = flinkConfiguration.getString(ConfigConstants.SECURITY_KEYTAB_KEY, null);
+		if(keytab != null) {
+			LOG.info("Adding keytab {} to the AM container local resource bucket", keytab);
+			keytabResource = Records.newRecord(LocalResource.class);
+			Path keytabPath = new Path(keytab);
+			remotePathKeytab = Utils.setupLocalResource(fs, appId.toString(), keytabPath, keytabResource, fs.getHomeDirectory());
+			localResources.put(ConfigConstants.KEYTAB_FILE_NAME, keytabResource);
+		}
+
+		if ( UserGroupInformation.isSecurityEnabled() && keytab == null ) {
+			//set tokens only when keytab is not provided
+			LOG.info("Adding delegation token to the AM container..");
+			Utils.setTokensFor(amContainer, paths, conf);
+		}
 
 		amContainer.setLocalResources(localResources);
 		fs.close();
@@ -634,9 +630,15 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 		appMasterEnv.put(YarnConfigKeys.ENV_APP_ID, appId.toString());
 		appMasterEnv.put(YarnConfigKeys.ENV_CLIENT_HOME_DIR, fs.getHomeDirectory().toString());
 		appMasterEnv.put(YarnConfigKeys.ENV_CLIENT_SHIP_FILES, envShipFileList.toString());
-		appMasterEnv.put(YarnConfigKeys.ENV_CLIENT_USERNAME, UserGroupInformation.getCurrentUser().getShortUserName());
 		appMasterEnv.put(YarnConfigKeys.ENV_SLOTS, String.valueOf(slots));
 		appMasterEnv.put(YarnConfigKeys.ENV_DETACHED, String.valueOf(detached));
+
+		appMasterEnv.put(YarnConfigKeys.ENV_HADOOP_USER_NAME, UserGroupInformation.getCurrentUser().getUserName());
+		if(keytabResource != null) {
+			appMasterEnv.put(YarnConfigKeys.KEYTAB_PATH, remotePathKeytab.toString() );
+			String principal = flinkConfiguration.getString(ConfigConstants.SECURITY_PRINCIPAL_KEY, null);
+			appMasterEnv.put(YarnConfigKeys.KEYTAB_PRINCIPAL, principal );
+		}
 
 		if(dynamicPropertiesEncoded != null) {
 			appMasterEnv.put(YarnConfigKeys.ENV_DYNAMIC_PROPERTIES, dynamicPropertiesEncoded);
@@ -687,6 +689,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 				throw new YarnDeploymentException("Failed to deploy the cluster: " + e.getMessage());
 			}
 			YarnApplicationState appState = report.getYarnApplicationState();
+			LOG.debug("Application State: {}", appState);
 			switch(appState) {
 				case FAILED:
 				case FINISHED:

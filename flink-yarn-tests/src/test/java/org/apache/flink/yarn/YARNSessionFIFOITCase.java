@@ -121,6 +121,27 @@ public class YARNSessionFIFOITCase extends YarnTestBase {
 		} catch(Throwable t) {
 			LOG.warn("Killing failed", t);
 			Assert.fail();
+		} finally {
+
+			//cleanup the yarn-properties file
+			String confDirPath = System.getenv("FLINK_CONF_DIR");
+			File configDirectory = new File(confDirPath);
+			LOG.info("testDetachedPerJobYarnClusterInternal: Using configuration directory " + configDirectory.getAbsolutePath());
+
+			// load the configuration
+			LOG.info("testDetachedPerJobYarnClusterInternal: Trying to load configuration file");
+			GlobalConfiguration.loadConfiguration(configDirectory.getAbsolutePath());
+
+			try {
+				File yarnPropertiesFile = FlinkYarnSessionCli.getYarnPropertiesLocation(GlobalConfiguration.getConfiguration());
+				if(yarnPropertiesFile.exists()) {
+					LOG.info("testDetachedPerJobYarnClusterInternal: Cleaning up temporary Yarn address reference: {}", yarnPropertiesFile.getAbsolutePath());
+					yarnPropertiesFile.delete();
+				}
+			} catch (Exception e) {
+				LOG.warn("testDetachedPerJobYarnClusterInternal: Exception while deleting the JobManager address file", e);
+			}
+
 		}
 
 		LOG.info("Finished testDetachedMode()");

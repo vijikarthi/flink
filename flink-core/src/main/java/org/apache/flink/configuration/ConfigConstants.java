@@ -1015,6 +1015,23 @@ public final class ConfigConstants {
 	/** The environment variable name which contains the location of the lib folder */
 	public static final String ENV_FLINK_LIB_DIR = "FLINK_LIB_DIR";
 
+	// -------------------------------- Security -------------------------------
+
+	/**
+	 * The config parameter defining security credentials required
+	 * for securing Flink cluster.
+	 */
+
+	/** Keytab file key name to be used in flink configuration file */
+	public static final String SECURITY_KEYTAB_KEY = "security.keytab";
+
+	/** Kerberos security principal key name to be used in flink configuration file */
+	public static final String SECURITY_PRINCIPAL_KEY = "security.principal";
+
+	/** Keytab file name populated in YARN container */
+	public static final String KEYTAB_FILE_NAME = "krb5.keytab";
+
+
 
 	/**
 	 * Not instantiable.

@@ -146,3 +146,18 @@ jobmanager.web.port: 8081
 # directory (see above) before configuring the storageDir.
 #
 # recovery.zookeeper.storageDir: hdfs:///recovery
+
+
+#==============================================================================
+# Flink Cluster Security Configuration (optional configuration)
+#==============================================================================
+
+# Kerberos security for the connectors can be enabled by providing below configurations
+# Security works in two modes - keytab/principal combination or using the Kerberos token cache
+# If keytab and principal are not provided, token cache (manual kinit) will be used
+# The security configurations can also be supplied through command line arguments which takes precedence
+# over the configuration file entries
+# command line parameters flags: --keytab, --principal
+
+#security.keytab: /path/to/kerberos/keytab
+#security.principal: flink-user

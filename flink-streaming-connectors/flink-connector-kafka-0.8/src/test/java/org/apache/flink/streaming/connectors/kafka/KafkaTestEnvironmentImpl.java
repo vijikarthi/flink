@@ -81,6 +81,11 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 	}
 
 	@Override
+	public Properties getSecureProperties() {
+		return null;
+	}
+
+	@Override
 	public String getVersion() {
 		return "0.8";
 	}
@@ -130,6 +135,11 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 	@Override
 	public int getBrokerId(KafkaServer server) {
 		return server.socketServer().brokerId();
+	}
+
+	@Override
+	public boolean isSecureRunSupported() {
+		return false;
 	}
 
 

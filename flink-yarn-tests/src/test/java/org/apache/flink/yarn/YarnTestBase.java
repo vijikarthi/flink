@@ -18,6 +18,7 @@
 
 package org.apache.flink.yarn;
 
+import com.google.common.base.Strings;
 import org.apache.commons.io.FileUtils;
 import org.apache.flink.client.CliFrontend;
 import org.apache.flink.configuration.ConfigConstants;
@@ -25,6 +26,8 @@ import org.apache.flink.yarn.cli.FlinkYarnSessionCli;
 import org.apache.flink.test.util.TestBaseUtils;
 import org.apache.flink.util.TestLogger;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
+import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.service.Service;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.ContainerId;
@@ -55,6 +58,8 @@ import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.BufferedWriter;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -115,6 +120,11 @@ public abstract class YarnTestBase extends TestLogger {
 	 */
 	protected static File flinkLibFolder;
 
+	/**
+	 * Temporary folder where Flink configurations will be kept for secure run
+	 */
+	protected static File tempConfPathForSecureRun = null;
+
 	static {
 		yarnConfiguration = new YarnConfiguration();
 		yarnConfiguration.setInt(YarnConfiguration.RM_SCHEDULER_MINIMUM_ALLOCATION_MB, 512);
@@ -132,6 +142,13 @@ public abstract class YarnTestBase extends TestLogger {
 	}
 
 
+	public static void populateYarnSecureConfigurations(Configuration conf, String principal, String keytab) {
+		conf.set(CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHENTICATION, "kerberos");
+		conf.set(YarnConfiguration.RM_KEYTAB, keytab);
+		conf.set(YarnConfiguration.RM_PRINCIPAL, principal);
+		conf.set(YarnConfiguration.NM_KEYTAB, keytab);
+		conf.set(YarnConfiguration.NM_PRINCIPAL, principal);
+	}
 
 	/**
 	 * Sleep a bit between the tests (we are re-using the YARN cluster for the tests)
@@ -328,8 +345,16 @@ public abstract class YarnTestBase extends TestLogger {
 		return count;
 	}
 
+	public static void startYARNSecureMode(Configuration conf, String principal, String keytab) {
+		start(conf, principal, keytab);
+	}
+
 	public static void startYARNWithConfig(Configuration conf) {
-		// set the home directory to a tmp directory. Flink on YARN is using the home dir to distribute the file
+		start(conf,null,null);
+	}
+
+	private static void start(Configuration conf, String principal, String keytab) {
+		// set the home directory to a temp directory. Flink on YARN is using the home dir to distribute the file
 		File homeDir = null;
 		try {
 			homeDir = tmp.newFolder();
@@ -366,7 +391,39 @@ public abstract class YarnTestBase extends TestLogger {
 			File flinkConfDirPath = findFile(flinkDistRootDir, new ContainsName(new String[]{"flink-conf.yaml"}));
 			Assert.assertNotNull(flinkConfDirPath);
 
-			map.put(ConfigConstants.ENV_FLINK_CONF_DIR, flinkConfDirPath.getParent());
+			if(!Strings.isNullOrEmpty(principal) && !Strings.isNullOrEmpty(keytab)) {
+				//copy conf dir to test temporary workspace location
+				tempConfPathForSecureRun = tmp.newFolder("conf");
+
+				String confDirPath = flinkConfDirPath.getParentFile().getAbsolutePath();
+				FileUtils.copyDirectory(new File(confDirPath), tempConfPathForSecureRun);
+
+				try(FileWriter fw = new FileWriter(new File(tempConfPathForSecureRun,"flink-conf.yaml"), true);
+					BufferedWriter bw = new BufferedWriter(fw);
+					PrintWriter out = new PrintWriter(bw))
+				{
+					LOG.info("writing keytab: " + keytab + " and principal: " + principal + " to config file");
+					out.println("");
+					out.println("#Security Configurations Auto Populated ");
+					out.println(ConfigConstants.SECURITY_KEYTAB_KEY + ": " + keytab);
+					out.println(ConfigConstants.SECURITY_PRINCIPAL_KEY + ": " + principal);
+					out.println("");
+				} catch (IOException e) {
+					LOG.error("Exception occured while trying to append the security configurations. Reason: {}", e.getMessage());
+					throw new RuntimeException(e);
+				}
+
+				String configDir = tempConfPathForSecureRun.getAbsolutePath();
+
+				LOG.info("Temporary Flink configuration directory to be used for secure test: {}", configDir);
+
+				Assert.assertNotNull(configDir);
+
+				map.put(ConfigConstants.ENV_FLINK_CONF_DIR, configDir);
+
+			} else {
+				map.put(ConfigConstants.ENV_FLINK_CONF_DIR, flinkConfDirPath.getParent());
+			}
 
 			File yarnConfFile = writeYarnSiteConfigXML(conf);
 			map.put("YARN_CONF_DIR", yarnConfFile.getParentFile().getAbsolutePath());
@@ -384,6 +441,7 @@ public abstract class YarnTestBase extends TestLogger {
 			LOG.error("setup failure", ex);
 			Assert.fail();
 		}
+
 	}
 
 	/**
@@ -600,7 +658,12 @@ public abstract class YarnTestBase extends TestLogger {
 		map.remove(ConfigConstants.ENV_FLINK_CONF_DIR);
 		TestBaseUtils.setEnv(map);
 
-		// When we are on travis, we copy the tmp files of JUnit (containing the MiniYARNCluster log files)
+		if(tempConfPathForSecureRun != null) {
+			FileUtil.fullyDelete(tempConfPathForSecureRun);
+			tempConfPathForSecureRun = null;
+		}
+
+		// When we are on travis, we copy the temp files of JUnit (containing the MiniYARNCluster log files)
 		// to <flinkRoot>/target/flink-yarn-tests-*.
 		// The files from there are picked up by the ./tools/travis_watchdog.sh script
 		// to upload them to Amazon S3.
@@ -617,6 +680,7 @@ public abstract class YarnTestBase extends TestLogger {
 				LOG.warn("Error copying the final files from {} to {}: msg: {}", src.getAbsolutePath(), target.getAbsolutePath(), e.getMessage(), e);
 			}
 		}
+
 	}
 
 	public static boolean isOnTravis() {

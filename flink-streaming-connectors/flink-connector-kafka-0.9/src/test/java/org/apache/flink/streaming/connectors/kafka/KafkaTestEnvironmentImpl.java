@@ -33,6 +33,7 @@ import org.apache.flink.streaming.connectors.kafka.testutils.ZooKeeperStringSeri
 import org.apache.flink.streaming.connectors.kafka.partitioner.KafkaPartitioner;
 import org.apache.flink.streaming.util.serialization.KeyedDeserializationSchema;
 import org.apache.flink.streaming.util.serialization.KeyedSerializationSchema;
+import org.apache.flink.test.util.RunTypeHolder;
 import org.apache.flink.util.NetUtils;
 import org.apache.kafka.common.protocol.SecurityProtocol;
 import org.slf4j.Logger;
@@ -131,6 +132,11 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 	}
 
 	@Override
+	public boolean isSecureRunSupported() {
+		return true;
+	}
+
+	@Override
 	public void prepare(int numKafkaServers, Properties additionalServerProperties) {
 		this.additionalServerProperties = additionalServerProperties;
 		File tempDir = new File(System.getProperty("java.io.tmpdir"));
@@ -163,7 +169,11 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 				brokers.add(getKafkaServer(i, tmpKafkaDirs.get(i)));
 
 				SocketServer socketServer = brokers.get(i).socketServer();
-				brokerConnectionString += hostAndPortToUrlString(KafkaTestEnvironment.KAFKA_HOST, brokers.get(i).socketServer().boundPort(SecurityProtocol.PLAINTEXT)) + ",";
+				if(RunTypeHolder.get().equals(RunTypeHolder.RunType.SECURE)) {
+					brokerConnectionString += hostAndPortToUrlString(KafkaTestEnvironment.KAFKA_HOST, brokers.get(i).socketServer().boundPort(SecurityProtocol.SASL_PLAINTEXT)) + ",";
+				} else {
+					brokerConnectionString += hostAndPortToUrlString(KafkaTestEnvironment.KAFKA_HOST, brokers.get(i).socketServer().boundPort(SecurityProtocol.PLAINTEXT)) + ",";
+				}
 			}
 
 			LOG.info("ZK and KafkaServer started.");
@@ -182,6 +192,10 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 		standardProps.setProperty("zookeeper.connection.timeout.ms", "30000");
 		standardProps.setProperty("auto.offset.reset", "earliest"); // read from the beginning. (earliest is kafka 0.9 value)
 		standardProps.setProperty("fetch.message.max.bytes", "256"); // make a lot of fetches (MESSAGES MUST BE SMALLER!)
+
+		if(RunTypeHolder.get().equals(RunTypeHolder.RunType.SECURE)) {
+			standardProps.putAll(getSecureProperties());
+		}
 	}
 
 	@Override
@@ -307,6 +321,15 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 		for (int i = 1; i <= numTries; i++) {
 			int kafkaPort = NetUtils.getAvailablePort();
 			kafkaProperties.put("port", Integer.toString(kafkaPort));
+
+			//to support secure kafka cluster
+			if(RunTypeHolder.get().equals(RunTypeHolder.RunType.SECURE)) {
+				LOG.info("Adding Kafka secure configurations");
+				kafkaProperties.put("listeners", "SASL_PLAINTEXT://" + KAFKA_HOST + ":" + kafkaPort);
+				kafkaProperties.put("advertised.listeners", "SASL_PLAINTEXT://" + KAFKA_HOST + ":" + kafkaPort);
+				kafkaProperties.putAll(getSecureProperties());
+			}
+
 			KafkaConfig kafkaConfig = new KafkaConfig(kafkaProperties);
 
 			try {
@@ -327,6 +350,16 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 		}
 
 		throw new Exception("Could not start Kafka after " + numTries + " retries due to port conflicts.");
+	}
+
+	public Properties getSecureProperties() {
+		Properties prop = new Properties();
+		if(RunTypeHolder.get().equals(RunTypeHolder.RunType.SECURE)) {
+			prop.put("security.inter.broker.protocol", "SASL_PLAINTEXT");
+			prop.put("security.protocol", "SASL_PLAINTEXT");
+			prop.put("sasl.kerberos.service.name", "client");
+		}
+		return prop;
 	}
 
 }

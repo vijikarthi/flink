@@ -51,8 +51,9 @@ public abstract class KafkaTestEnvironment {
 		this.createTestTopic(topic, numberOfPartitions, replicationFactor, new Properties());
 	}
 
-
 	public abstract Properties getStandardProperties();
+
+	public abstract Properties getSecureProperties();
 
 	public abstract String getBrokerConnectionString();
 
@@ -85,5 +86,7 @@ public abstract class KafkaTestEnvironment {
 	public abstract int getLeaderToShutDown(String topic) throws Exception;
 
 	public abstract int getBrokerId(KafkaServer server);
+
+	public abstract boolean isSecureRunSupported();
 
 }

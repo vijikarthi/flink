@@ -32,6 +32,7 @@ import org.apache.flink.runtime.jobmanager.JobManager;
 import org.apache.flink.runtime.jobmanager.MemoryArchivist;
 import org.apache.flink.runtime.leaderretrieval.LeaderRetrievalService;
 import org.apache.flink.runtime.process.ProcessReaper;
+import org.apache.flink.runtime.security.SecurityContext;
 import org.apache.flink.runtime.taskmanager.TaskManager;
 import org.apache.flink.runtime.util.EnvironmentInformation;
 import org.apache.flink.runtime.util.LeaderRetrievalUtils;
@@ -43,7 +44,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
@@ -59,7 +59,6 @@ import scala.concurrent.duration.FiniteDuration;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -125,29 +124,35 @@ public class YarnApplicationMasterRunner {
 		try {
 			LOG.debug("All environment variables: {}", ENV);
 
-			final String yarnClientUsername = ENV.get(YarnConfigKeys.ENV_CLIENT_USERNAME);
+			final String yarnClientUsername = ENV.get(YarnConfigKeys.ENV_HADOOP_USER_NAME);
 			require(yarnClientUsername != null, "YARN client user name environment variable {} not set",
-				YarnConfigKeys.ENV_CLIENT_USERNAME);
+				YarnConfigKeys.ENV_HADOOP_USER_NAME);
 
-			final UserGroupInformation currentUser;
-			try {
-				currentUser = UserGroupInformation.getCurrentUser();
-			} catch (Throwable t) {
-				throw new Exception("Cannot access UserGroupInformation information for current user", t);
+			final String currDir = ENV.get(Environment.PWD.key());
+			require(currDir != null, "Current working directory variable (%s) not set", Environment.PWD.key());
+			LOG.debug("Current working Directory: {}", currDir);
+
+			final String remoteKeytabPath = ENV.get(YarnConfigKeys.KEYTAB_PATH);
+			LOG.debug("remoteKeytabPath obtained {}", remoteKeytabPath);
+
+			final String remoteKeytabPrincipal = ENV.get(YarnConfigKeys.KEYTAB_PRINCIPAL);
+			LOG.info("remoteKeytabPrincipal obtained {}", remoteKeytabPrincipal);
+
+			String keytabPath = null;
+			if(remoteKeytabPath != null) {
+				File f = new File(currDir, ConfigConstants.KEYTAB_FILE_NAME);
+				keytabPath = f.getAbsolutePath();
+				LOG.debug("keytabPath: {}", keytabPath);
 			}
 
-			LOG.info("YARN daemon runs as user {}. Running Flink Application Master/JobManager as user {}",
-				currentUser.getShortUserName(), yarnClientUsername);
+			UserGroupInformation currentUser = UserGroupInformation.getCurrentUser();
 
-			UserGroupInformation ugi = UserGroupInformation.createRemoteUser(yarnClientUsername);
+			LOG.info("YARN daemon is running as: {} Yarn client user obtainer: {}",
+					currentUser.getShortUserName(), yarnClientUsername );
 
-			// transfer all security tokens, for example for authenticated HDFS and HBase access
-			for (Token<?> token : currentUser.getTokens()) {
-				ugi.addToken(token);
-			}
+			SecurityContext.install(new SecurityContext.SecurityConfiguration().setCredentials(keytabPath, remoteKeytabPrincipal));
 
-			// run the actual work in a secured privileged action
-			return ugi.doAs(new PrivilegedAction<Integer>() {
+			return SecurityContext.getInstalled().runSecured(new SecurityContext.FlinkSecuredRunner<Integer>() {
 				@Override
 				public Integer run() {
 					return runApplicationMaster();
@@ -198,6 +203,22 @@ public class YarnApplicationMasterRunner {
 			LOG.debug("YARN dynamic properties: {}", dynamicProperties);
 
 			final Configuration config = createConfiguration(currDir, dynamicProperties);
+
+			//Update keytab and principal path to reflect YARN container path location
+			final String remoteKeytabPath = ENV.get(YarnConfigKeys.KEYTAB_PATH);
+
+			final String remoteKeytabPrincipal = ENV.get(YarnConfigKeys.KEYTAB_PRINCIPAL);
+
+			String keytabPath = null;
+			if(remoteKeytabPath != null) {
+				File f = new File(currDir, ConfigConstants.KEYTAB_FILE_NAME);
+				keytabPath = f.getAbsolutePath();
+				LOG.info("keytabPath: {}", keytabPath);
+			}
+			if(keytabPath != null && remoteKeytabPrincipal != null) {
+				config.setString(ConfigConstants.SECURITY_KEYTAB_KEY, keytabPath);
+				config.setString(ConfigConstants.SECURITY_PRINCIPAL_KEY, remoteKeytabPrincipal);
+			}
 
 			// Hadoop/Yarn configuration (loads config data automatically from classpath files)
 			final YarnConfiguration yarnConfig = new YarnConfiguration();
@@ -516,8 +537,14 @@ public class YarnApplicationMasterRunner {
 		String shipListString = env.get(YarnConfigKeys.ENV_CLIENT_SHIP_FILES);
 		require(shipListString != null, "Environment variable %s not set", YarnConfigKeys.ENV_CLIENT_SHIP_FILES);
 
-		String yarnClientUsername = env.get(YarnConfigKeys.ENV_CLIENT_USERNAME);
-		require(yarnClientUsername != null, "Environment variable %s not set", YarnConfigKeys.ENV_CLIENT_USERNAME);
+		String yarnClientUsername = env.get(YarnConfigKeys.ENV_HADOOP_USER_NAME);
+		require(yarnClientUsername != null, "Environment variable %s not set", YarnConfigKeys.ENV_HADOOP_USER_NAME);
+
+		final String remoteKeytabPath = env.get(YarnConfigKeys.KEYTAB_PATH);
+		LOG.info("TM:remoteKeytabPath obtained {}", remoteKeytabPath);
+
+		final String remoteKeytabPrincipal = env.get(YarnConfigKeys.KEYTAB_PRINCIPAL);
+		LOG.info("TM:remoteKeytabPrincipal obtained {}", remoteKeytabPrincipal);
 
 		String classPathString = env.get(YarnConfigKeys.ENV_FLINK_CLASSPATH);
 		require(classPathString != null, "Environment variable %s not set", YarnConfigKeys.ENV_FLINK_CLASSPATH);
@@ -528,6 +555,15 @@ public class YarnApplicationMasterRunner {
 			yarnFileSystem = org.apache.hadoop.fs.FileSystem.get(yarnConfig);
 		} catch (IOException e) {
 			throw new Exception("Could not access YARN's default file system", e);
+		}
+
+		//register keytab
+		LocalResource keytabResource = null;
+		if(remoteKeytabPath != null) {
+			LOG.info("Adding keytab {} to the AM container local resource bucket", remoteKeytabPath);
+			keytabResource = Records.newRecord(LocalResource.class);
+			Path keytabPath = new Path(remoteKeytabPath);
+			Utils.registerLocalResource(yarnFileSystem, keytabPath, keytabResource);
 		}
 
 		// register Flink Jar with remote HDFS
@@ -555,6 +591,10 @@ public class YarnApplicationMasterRunner {
 		Map<String, LocalResource> taskManagerLocalResources = new HashMap<>();
 		taskManagerLocalResources.put("flink.jar", flinkJar);
 		taskManagerLocalResources.put("flink-conf.yaml", flinkConf);
+
+		if(keytabResource != null) {
+			taskManagerLocalResources.put(ConfigConstants.KEYTAB_FILE_NAME, keytabResource);
+		}
 
 		// prepare additional files to be shipped
 		for (String pathStr : shipListString.split(",")) {
@@ -590,11 +630,12 @@ public class YarnApplicationMasterRunner {
 		containerEnv.put(ENV_FLINK_CLASSPATH, classPathString);
 		Utils.setupYarnClassPath(yarnConfig, containerEnv);
 
-		containerEnv.put(YarnConfigKeys.ENV_CLIENT_USERNAME, yarnClientUsername);
+		containerEnv.put(YarnConfigKeys.ENV_HADOOP_USER_NAME, UserGroupInformation.getCurrentUser().getUserName());
 
 		ctx.setEnvironment(containerEnv);
 
 		try {
+			LOG.debug("Adding security tokens to Task Manager Container launch Context....");
 			UserGroupInformation user = UserGroupInformation.getCurrentUser();
 			Credentials credentials = user.getCredentials();
 			DataOutputBuffer dob = new DataOutputBuffer();

@@ -23,6 +23,8 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.client.JobExecutionException;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.test.util.ForkableFlinkMiniCluster;
+import org.apache.flink.test.util.RunTypeHolder;
+import org.apache.flink.test.util.SecureTestEnvironment;
 import org.apache.flink.test.util.SuccessException;
 import org.apache.flink.util.InstantiationUtil;
 import org.apache.flink.util.TestLogger;
@@ -30,6 +32,8 @@ import org.apache.flink.util.TestLogger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
+import org.junit.ClassRule;
+import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +76,11 @@ public abstract class KafkaTestBase extends TestLogger {
 
 	protected static KafkaTestEnvironment kafkaServer;
 
+	@ClassRule
+	public static TemporaryFolder tempFolder = new TemporaryFolder();
+
+	protected static Properties secureProps = new Properties();
+
 	// ------------------------------------------------------------------------
 	//  Setup and teardown of the mini clusters
 	// ------------------------------------------------------------------------
@@ -81,12 +90,20 @@ public abstract class KafkaTestBase extends TestLogger {
 		LOG.info("-------------------------------------------------------------------------");
 		LOG.info("    Starting KafkaTestBase ");
 		LOG.info("-------------------------------------------------------------------------");
-		
 
+		Configuration flinkConfig = new Configuration();
 
 		// dynamically load the implementation for the test
 		Class<?> clazz = Class.forName("org.apache.flink.streaming.connectors.kafka.KafkaTestEnvironmentImpl");
 		kafkaServer = (KafkaTestEnvironment) InstantiationUtil.instantiate(clazz);
+
+		LOG.info("Runtype: {}", RunTypeHolder.get());
+		if(RunTypeHolder.get().equals(RunTypeHolder.RunType.SECURE)
+				&& kafkaServer.isSecureRunSupported()) {
+			SecureTestEnvironment.prepare(tempFolder);
+			SecureTestEnvironment.getSecurityEnabledFlinkConfiguration(flinkConfig);
+			secureProps = kafkaServer.getSecureProperties();
+		}
 
 		LOG.info("Starting KafkaTestBase.prepare() for Kafka " + kafkaServer.getVersion());
 
@@ -96,7 +113,6 @@ public abstract class KafkaTestBase extends TestLogger {
 		brokerConnectionStrings = kafkaServer.getBrokerConnectionString();
 
 		// start also a re-usable Flink mini cluster
-		Configuration flinkConfig = new Configuration();
 		flinkConfig.setInteger(ConfigConstants.LOCAL_NUMBER_TASK_MANAGER, 1);
 		flinkConfig.setInteger(ConfigConstants.TASK_MANAGER_NUM_TASK_SLOTS, 8);
 		flinkConfig.setInteger(ConfigConstants.TASK_MANAGER_MEMORY_SIZE_KEY, 16);
@@ -121,6 +137,13 @@ public abstract class KafkaTestBase extends TestLogger {
 		}
 
 		kafkaServer.shutdown();
+
+		if(RunTypeHolder.get().equals(RunTypeHolder.RunType.SECURE)
+				&& kafkaServer.isSecureRunSupported()) {
+			SecureTestEnvironment.cleanup();
+			secureProps.clear();
+			RunTypeHolder.set(RunTypeHolder.RunType.CLEAR);
+		}
 
 		LOG.info("-------------------------------------------------------------------------");
 		LOG.info("    KafkaTestBase finished");

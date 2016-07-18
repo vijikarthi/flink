@@ -26,7 +26,6 @@ import java.util.UUID;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-
 public class Kafka09ITCase extends KafkaConsumerTestBase {
 
 	// ------------------------------------------------------------------------

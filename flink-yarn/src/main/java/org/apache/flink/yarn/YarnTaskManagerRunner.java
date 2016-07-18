@@ -18,20 +18,19 @@
 
 package org.apache.flink.yarn;
 
+import java.io.File;
 import java.io.IOException;
-import java.security.PrivilegedAction;
 import java.util.Map;
 
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
+import org.apache.flink.runtime.security.SecurityContext;
 import org.apache.flink.runtime.taskmanager.TaskManager;
 import org.apache.flink.runtime.util.EnvironmentInformation;
 
 import org.apache.flink.util.Preconditions;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 
 import org.slf4j.Logger;
@@ -61,8 +60,18 @@ public class YarnTaskManagerRunner {
 
 		// read the environment variables for YARN
 		final Map<String, String> envs = System.getenv();
-		final String yarnClientUsername = envs.get(YarnConfigKeys.ENV_CLIENT_USERNAME);
+		final String yarnClientUsername = envs.get(YarnConfigKeys.ENV_HADOOP_USER_NAME);
 		final String localDirs = envs.get(Environment.LOCAL_DIRS.key());
+		LOG.info("Current working/local Directory: {}", localDirs);
+
+		final String currDir = envs.get(Environment.PWD.key());
+		LOG.info("Current working Directory: {}", currDir);
+
+		final String remoteKeytabPath = envs.get(YarnConfigKeys.KEYTAB_PATH);
+		LOG.info("TM: remoteKeytabPath obtained {}", remoteKeytabPath);
+
+		final String remoteKeytabPrincipal = envs.get(YarnConfigKeys.KEYTAB_PRINCIPAL);
+		LOG.info("TM: remoteKeytabPrincipal obtained {}", remoteKeytabPrincipal);
 
 		// configure local directory
 		String flinkTempDirs = configuration.getString(ConfigConstants.TASK_MANAGER_TMP_DIR_KEY, null);
@@ -75,34 +84,47 @@ public class YarnTaskManagerRunner {
 				"specified in the Flink config: " + flinkTempDirs);
 		}
 
-		LOG.info("YARN daemon runs as '" + UserGroupInformation.getCurrentUser().getShortUserName() +
-			"' setting user to execute Flink TaskManager to '" + yarnClientUsername + "'");
-
 		// tell akka to die in case of an error
 		configuration.setBoolean(ConfigConstants.AKKA_JVM_EXIT_ON_FATAL_ERROR, true);
 
-		UserGroupInformation ugi = UserGroupInformation.createRemoteUser(yarnClientUsername);
-		for (Token<? extends TokenIdentifier> toks : UserGroupInformation.getCurrentUser().getTokens()) {
-			ugi.addToken(toks);
+		String keytabPath = null;
+		if(remoteKeytabPath != null) {
+			File f = new File(currDir, ConfigConstants.KEYTAB_FILE_NAME);
+			keytabPath = f.getAbsolutePath();
+			LOG.info("keytabPath: {}", keytabPath);
 		}
+
+		UserGroupInformation currentUser = UserGroupInformation.getCurrentUser();
+
+		LOG.info("YARN daemon is running as: {} Yarn client user obtainer: {}",
+				currentUser.getShortUserName(), yarnClientUsername );
 
 		// Infer the resource identifier from the environment variable
 		String containerID = Preconditions.checkNotNull(envs.get(YarnFlinkResourceManager.ENV_FLINK_CONTAINER_ID));
 		final ResourceID resourceId = new ResourceID(containerID);
 		LOG.info("ResourceID assigned for this container: {}", resourceId);
 
-		ugi.doAs(new PrivilegedAction<Object>() {
-			@Override
-			public Object run() {
-				try {
-					TaskManager.selectNetworkInterfaceAndRunTaskManager(configuration, resourceId, taskManager);
+		try {
+
+			SecurityContext.install(new SecurityContext.SecurityConfiguration().setCredentials(keytabPath, remoteKeytabPrincipal));
+
+			SecurityContext.getInstalled().runSecured(new SecurityContext.FlinkSecuredRunner<Integer>() {
+				@Override
+				public Integer run() {
+					try {
+						TaskManager.selectNetworkInterfaceAndRunTaskManager(configuration, resourceId, taskManager);
+					}
+					catch (Throwable t) {
+						LOG.error("Error while starting the TaskManager", t);
+						System.exit(TaskManager.STARTUP_FAILURE_RETURN_CODE());
+					}
+					return null;
 				}
-				catch (Throwable t) {
-					LOG.error("Error while starting the TaskManager", t);
-					System.exit(TaskManager.STARTUP_FAILURE_RETURN_CODE());
-				}
-				return null;
-			}
-		});
+			});
+		} catch(Exception e) {
+			LOG.error("Exception occurred while launching Task Manager. Reason: {}", e);
+			throw new RuntimeException(e);
+		}
+
 	}
 }
