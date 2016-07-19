@@ -116,8 +116,11 @@ public abstract class KafkaProducerTestBase extends KafkaTestBase {
 			.setParallelism(parallelism);
 
 			// ------ consuming topology ---------
-			
-			FlinkKafkaConsumerBase<Tuple2<Long, String>> source = kafkaServer.getConsumer(topic, deserSchema, standardProps);
+
+			Properties consumerProps = new Properties();
+			consumerProps.putAll(standardProps);
+			consumerProps.putAll(secureProps);
+			FlinkKafkaConsumerBase<Tuple2<Long, String>> source = kafkaServer.getConsumer(topic, deserSchema, consumerProps);
 			
 			env.addSource(source).setParallelism(parallelism)
 

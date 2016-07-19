@@ -21,6 +21,7 @@ import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.junit.Test;
 
+import java.util.Properties;
 import java.util.UUID;
 
 import static org.junit.Assert.assertTrue;
@@ -130,11 +131,15 @@ public class Kafka09ITCase extends KafkaConsumerTestBase {
 	public void testJsonTableSource() throws Exception {
 		String topic = UUID.randomUUID().toString();
 
+		Properties props = new Properties();
+		props.putAll(standardProps);
+		props.putAll(secureProps);
+
 		// Names and types are determined in the actual test method of the
 		// base test class.
 		Kafka09JsonTableSource tableSource = new Kafka09JsonTableSource(
 				topic,
-				standardProps,
+				props,
 				new String[] {
 						"long",
 						"string",
@@ -158,11 +163,15 @@ public class Kafka09ITCase extends KafkaConsumerTestBase {
 	public void testJsonTableSourceWithFailOnMissingField() throws Exception {
 		String topic = UUID.randomUUID().toString();
 
+		Properties props = new Properties();
+		props.putAll(standardProps);
+		props.putAll(secureProps);
+
 		// Names and types are determined in the actual test method of the
 		// base test class.
 		Kafka09JsonTableSource tableSource = new Kafka09JsonTableSource(
 				topic,
-				standardProps,
+				props,
 				new String[] {
 						"long",
 						"string",

@@ -725,7 +725,11 @@ public abstract class KafkaConsumerTestBase extends KafkaTestBase {
 
 		Tuple2WithTopicSchema schema = new Tuple2WithTopicSchema(env.getConfig());
 
-		stream.addSink(kafkaServer.getProducer("dummy", schema, standardProps, null));
+		Properties props = new Properties();
+		props.putAll(standardProps);
+		props.putAll(secureProps);
+
+		stream.addSink(kafkaServer.getProducer("dummy", schema, props, null));
 
 		env.execute("Write to topics");
 
@@ -733,9 +737,6 @@ public abstract class KafkaConsumerTestBase extends KafkaTestBase {
 		env = StreamExecutionEnvironment.createRemoteEnvironment("localhost", flinkPort);
 		env.getConfig().disableSysoutLogging();
 
-		Properties props = new Properties();
-		props.putAll(standardProps);
-		props.putAll(secureProps);
 		stream = env.addSource(kafkaServer.getConsumer(topics, schema, props));
 
 		stream.flatMap(new FlatMapFunction<Tuple3<Integer, Integer, String>, Integer>() {
@@ -815,6 +816,10 @@ public abstract class KafkaConsumerTestBase extends KafkaTestBase {
 		// Produce serialized JSON data
 		createTestTopic(topic, 1, 1);
 
+		Properties props = new Properties();
+		props.putAll(standardProps);
+		props.putAll(secureProps);
+
 		StreamExecutionEnvironment env = StreamExecutionEnvironment
 				.createRemoteEnvironment("localhost", flinkPort);
 		env.getConfig().disableSysoutLogging();
@@ -833,7 +838,7 @@ public abstract class KafkaConsumerTestBase extends KafkaTestBase {
 		}).addSink(kafkaServer.getProducer(
 				topic,
 				new ByteArraySerializationSchema(),
-				standardProps,
+				props,
 				null));
 
 		// Execute blocks
@@ -1307,8 +1312,12 @@ public abstract class KafkaConsumerTestBase extends KafkaTestBase {
 					env1.getConfig().disableSysoutLogging();
 					env1.disableOperatorChaining(); // let the source read everything into the network buffers
 
+					Properties props = new Properties();
+					props.putAll(standardProps);
+					props.putAll(secureProps);
+
 					TypeInformationSerializationSchema<Tuple2<Integer, Integer>> schema = new TypeInformationSerializationSchema<>(TypeInfoParser.<Tuple2<Integer, Integer>>parse("Tuple2<Integer, Integer>"), env1.getConfig());
-					DataStream<Tuple2<Integer, Integer>> fromKafka = env1.addSource(kafkaServer.getConsumer(topic, schema, standardProps));
+					DataStream<Tuple2<Integer, Integer>> fromKafka = env1.addSource(kafkaServer.getConsumer(topic, schema, props));
 					fromKafka.flatMap(new FlatMapFunction<Tuple2<Integer, Integer>, Void>() {
 						@Override
 						public void flatMap(Tuple2<Integer, Integer> value, Collector<Void> out) throws Exception {// no op
@@ -1333,7 +1342,7 @@ public abstract class KafkaConsumerTestBase extends KafkaTestBase {
 						}
 					});
 
-					fromGen.addSink(kafkaServer.getProducer(topic, new KeyedSerializationSchemaWrapper<>(schema), standardProps, null));
+					fromGen.addSink(kafkaServer.getProducer(topic, new KeyedSerializationSchemaWrapper<>(schema), props, null));
 
 					env1.execute("Metrics test job");
 				} catch(Throwable t) {
@@ -1719,6 +1728,7 @@ public abstract class KafkaConsumerTestBase extends KafkaTestBase {
 		newProps.setProperty("group.id", "topic-printer"+ UUID.randomUUID().toString());
 		newProps.setProperty("auto.offset.reset", "smallest");
 		newProps.setProperty("zookeeper.connect", standardProps.getProperty("zookeeper.connect"));
+		newProps.putAll(secureProps);
 
 		ConsumerConfig printerConfig = new ConsumerConfig(newProps);
 		printTopic(topicName, printerConfig, deserializer, elements);

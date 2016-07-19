@@ -21,5 +21,9 @@ package org.apache.flink.streaming.connectors.kafka;
 import org.apache.flink.test.util.RunTypeSelectionRunner;
 import org.junit.runner.RunWith;
 
+/*
+ * This class {@link Kafka09ProducerSecuredITCase} is extension of {@link Kafka09ProducerITCase} but will be running
+ * in secure mode
+ */
 @RunWith(RunTypeSelectionRunner.class)
 public class Kafka09ProducerSecuredITCase extends Kafka09ProducerITCase { }

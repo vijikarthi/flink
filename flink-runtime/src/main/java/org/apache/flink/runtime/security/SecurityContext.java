@@ -31,7 +31,11 @@ import javax.security.auth.Subject;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.security.PrivilegedExceptionAction;
-
+/*
+ * Process-wide security context object which initializes UGI with appropriate security credentials and also it
+ * creates in-memory JAAS configuration object which will serve appropriate ApplicationConfigurationEntry for the
+ * connector login module implementation that authenticates Kerberos identity using SASL/JAAS based mechanism.
+ */
 @Internal
 public class SecurityContext {
 

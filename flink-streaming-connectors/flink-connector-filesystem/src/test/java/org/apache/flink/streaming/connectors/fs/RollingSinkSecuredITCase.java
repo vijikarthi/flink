@@ -46,8 +46,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_DATANODE_HTTP_ADDRESS_KEY;
 
 /**
- * Tests for {@link RollingSinkSecuredITCase} which is an extension of {@link RollingSinkITCase} with the
- * exception of running in secure environment
+ * Tests for running {@link RollingSinkSecuredITCase} which is an extension of {@link RollingSink} in secure environment
  */
 
 public class RollingSinkSecuredITCase extends RollingSinkITCase {

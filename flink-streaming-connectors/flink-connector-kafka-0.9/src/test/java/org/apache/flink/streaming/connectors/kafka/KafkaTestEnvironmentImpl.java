@@ -193,9 +193,6 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 		standardProps.setProperty("auto.offset.reset", "earliest"); // read from the beginning. (earliest is kafka 0.9 value)
 		standardProps.setProperty("fetch.message.max.bytes", "256"); // make a lot of fetches (MESSAGES MUST BE SMALLER!)
 
-		if(RunTypeHolder.get().equals(RunTypeHolder.RunType.SECURE)) {
-			standardProps.putAll(getSecureProperties());
-		}
 	}
 
 	@Override

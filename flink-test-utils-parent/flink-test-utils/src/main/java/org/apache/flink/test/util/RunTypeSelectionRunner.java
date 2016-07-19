@@ -23,6 +23,13 @@ import org.junit.runners.model.InitializationError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/*
+ * Custom JRunner used to run integration tests for Kafka in secure mode. Since the test code implementation uses
+ * abstract base code to run the MiniFlinkCluster and also start/stop Kafka brokers depending on the version (0.8/0.9)
+ * we need to know the run mode (CLEAR/SECURE) ahead of time (before the beforeClass). This Runner instance
+ * take care of setting SECURE flag on the holder class for secure testing to work seamless
+ *
+ */
 public class RunTypeSelectionRunner extends BlockJUnit4ClassRunner {
 
 	protected static final Logger LOG = LoggerFactory.getLogger(RunTypeSelectionRunner.class);
@@ -31,7 +38,7 @@ public class RunTypeSelectionRunner extends BlockJUnit4ClassRunner {
 
 	public RunTypeSelectionRunner(Class<?> klass) throws InitializationError {
 		super(klass);
-		LOG.info("In RunTypeSelectionRunner: Constructor called for class: {}", klass);
+		LOG.debug("In RunTypeSelectionRunner: Constructor called for class: {}", klass);
 		RunTypeHolder.set(runType);
 	}
 
