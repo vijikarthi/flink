@@ -43,6 +43,9 @@ public class YarnConfigKeys {
 	public final static String KEYTAB_PATH = "_KEYTAB_PATH";
 	public final static String KEYTAB_PRINCIPAL = "_KEYTAB_PRINCIPAL";
 	public final static String ENV_HADOOP_USER_NAME = "HADOOP_USER_NAME";
+	public static final String ENV_ZOOKEEPER_NAMESPACE = "_ZOOKEEPER_NAMESPACE";
+
+
 	// ------------------------------------------------------------------------
 
 	/** Private constructor to prevent instantiation */
