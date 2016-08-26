@@ -25,6 +25,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.runtime.jobmanager.HighAvailabilityMode;
 import org.apache.flink.runtime.net.SSLUtils;
+import org.apache.flink.runtime.security.SecurityUtils;
 import org.apache.flink.util.NetUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,6 +90,9 @@ public class BlobServer extends Thread implements BlobService {
 	 */
 	private final Thread shutdownHook;
 
+	/** Secure cookie for service level authorization **/
+	private String secureCookie;
+
 	/**
 	 * Instantiates a new BLOB server and binds it to a free network port.
 	 *
@@ -114,6 +118,8 @@ public class BlobServer extends Thread implements BlobService {
 		} else {
 			throw new IllegalConfigurationException("Unexpected high availability mode '" + highAvailabilityMode + ".");
 		}
+
+		secureCookie = SecurityUtils.validateAndGetSecureCookie(config);
 
 		// configure the maximum number of concurrent connections
 		final int maxConnections = config.getInteger(
@@ -450,5 +456,12 @@ public class BlobServer extends Thread implements BlobService {
 			return new ArrayList<BlobServerConnection>(activeConnections);
 		}
 	}
+
+	/* Secure cookie to authenticate */
+	@Override
+	public String getSecureCookie() { return secureCookie; }
+
+	/* Flag to indicate if service level authentication is enabled or not */
+	public boolean isSecurityEnabled() { return secureCookie != null; }
 
 }

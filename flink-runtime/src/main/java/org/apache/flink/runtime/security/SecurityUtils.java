@@ -22,6 +22,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
+import org.apache.flink.configuration.SecurityOptions;
+import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.util.Preconditions;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.Credentials;
@@ -174,6 +176,7 @@ public class SecurityUtils {
 	 * In this method, setting java.security.auth.login.config configuration is configured only to support ZK and
 	 * Kafka current code behavior.
 	 */
+
 	private static void populateSystemSecurityProperties(Configuration configuration) {
 		Preconditions.checkNotNull(configuration, "The supplied configuration was null");
 
@@ -281,6 +284,36 @@ public class SecurityUtils {
 			return keytab != null && principal != null;
 		}
 	}
+
+	/**
+	 * Utility method to validate secure cookie from Flink configuration instance
+	 * @throws IllegalConfigurationException
+	 * 			thrown if security is enabled and cookie is not provided
+	 */
+	public static String validateAndGetSecureCookie(Configuration configuration) {
+		String secureCookie = null;
+		if(isSecurityEnabled(configuration)) {
+			secureCookie = configuration.getString(SecurityOptions.SECURITY_COOKIE);
+			if(secureCookie == null) {
+				throw new IllegalConfigurationException(SecurityOptions.SECURITY_COOKIE.key() + " must be configured.");
+			}
+		}
+		return secureCookie;
+	}
+
+	public static boolean isSecurityEnabled(Configuration configuration) {
+
+		boolean securityEnabled = configuration.getBoolean(SecurityOptions.SECURITY_ENABLED);
+		boolean transportSecurityEnabled = configuration.getBoolean(SecurityOptions.SECURITY_SSL_ENABLED);
+		if(securityEnabled) {
+			if(!transportSecurityEnabled) {
+				throw new IllegalConfigurationException(SecurityOptions.SECURITY_SSL_ENABLED.key() + " must be configured.");
+			}
+			return true;
+		}
+		return false;
+	}
+
 
 	// Just a util, shouldn't be instantiated.
 	private SecurityUtils() {}

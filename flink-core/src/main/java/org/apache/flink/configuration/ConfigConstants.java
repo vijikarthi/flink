@@ -722,6 +722,15 @@ public final class ConfigConstants {
 	/** Flag to enable/disable hostname verification for the ssl connections */
 	public static final String SECURITY_SSL_VERIFY_HOSTNAME = "security.ssl.verify-hostname";
 
+	// ---------------------------- Secure Cookie Authentication -----------------------------------
+
+	/** Flag that specify whether service authentication is enabled or not **/
+	public static final String SECURITY_ENABLED = "security.enabled";
+
+	/** cookie to be used for authentication **/
+	public static final String SECURITY_COOKIE = "security.cookie";
+
+
 	// ----------------------------- Streaming --------------------------------
 	
 	/**
@@ -878,6 +887,7 @@ public final class ConfigConstants {
 	/** Deprecated in favour of {@link #HA_ZOOKEEPER_MAX_RETRY_ATTEMPTS}. */
 	@Deprecated
 	public static final String ZOOKEEPER_MAX_RETRY_ATTEMPTS = "recovery.zookeeper.client.max-retry-attempts";
+
 
 	// ---------------------------- Metrics -----------------------------------
 
@@ -1278,6 +1288,11 @@ public final class ConfigConstants {
 
 	public static boolean DEFAULT_SECURITY_SSL_VERIFY_HOSTNAME = true;
 
+	// ------------------ Defaults for Secure Cookie Authentication ----------------
+
+	/** By default, secure cookie authentication is disabled **/
+	public static final boolean DEFAULT_SECURITY_ENABLED = false;
+
 	// ----------------------------- Streaming Values --------------------------
 	
 	public static String DEFAULT_STATE_BACKEND = "jobmanager";
@@ -1401,7 +1416,6 @@ public final class ConfigConstants {
 
 	/** Kerberos security principal key name to be used in flink configuration file */
 	public static final String SECURITY_PRINCIPAL_KEY = "security.principal";
-
 
 	/**
 	 * Not instantiable.

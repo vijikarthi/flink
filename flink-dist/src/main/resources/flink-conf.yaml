@@ -167,11 +167,19 @@ jobmanager.web.port: 8081
 # If keytab and principal are not provided, token cache (manual kinit) will be used
 
 #security.keytab: /path/to/kerberos/keytab
+
 #security.principal: flink-user
+
+# Flag to enable/disable service level authorization (disabled by default)
+#security.enabled: false
+
+#secure random cookie to be used for service level authorization (auto-generated or static if value supplied)
+#security.cookie: changeme
 
 #==============================================================================
 # ZK Security Configuration (optional configuration)
 #==============================================================================
+
 # Below configurations are applicable if ZK quorum is configured for Kerberos security
 
 # SASL authentication is disabled by default and can be enabled by changig the value to false

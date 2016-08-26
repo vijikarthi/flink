@@ -151,7 +151,7 @@ public class WebRuntimeMonitor implements WebMonitor {
 	private MetricFetcher metricFetcher;
 
 	public WebRuntimeMonitor(
-			Configuration config,
+			final Configuration config,
 			LeaderRetrievalService leaderRetrievalService,
 			ActorSystem actorSystem) throws IOException, InterruptedException {
 
@@ -388,7 +388,7 @@ public class WebRuntimeMonitor implements WebMonitor {
 				ch.pipeline()
 						.addLast(new HttpServerCodec())
 						.addLast(new ChunkedWriteHandler())
-						.addLast(new HttpRequestHandler(uploadDir))
+						.addLast(new HttpRequestHandler(config,uploadDir))
 						.addLast(handler.name(), handler)
 						.addLast(new PipelineErrorHandler(LOG));
 			}

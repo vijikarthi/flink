@@ -69,6 +69,8 @@ class PartitionRequestClientHandler extends ChannelInboundHandlerAdapter {
 
 	private volatile ChannelHandlerContext ctx;
 
+	public PartitionRequestClientHandler() { }
+
 	// ------------------------------------------------------------------------
 	// Input channel/receiver registration
 	// ------------------------------------------------------------------------
