@@ -62,6 +62,12 @@ class PartitionRequestQueue extends ChannelInboundHandlerAdapter {
 
 	private ChannelHandlerContext ctx;
 
+	private final String secureCookie;
+
+	public PartitionRequestQueue(String secureCookie) {
+		this.secureCookie = secureCookie;
+	}
+
 	@Override
 	public void channelRegistered(final ChannelHandlerContext ctx) throws Exception {
 		if (this.ctx == null) {
@@ -170,7 +176,8 @@ class PartitionRequestQueue extends ChannelInboundHandlerAdapter {
 						}
 					}
 					else {
-						BufferResponse resp = new BufferResponse(buffer, currentPartitionQueue.getSequenceNumber(), currentPartitionQueue.getReceiverId());
+						BufferResponse resp = new BufferResponse(buffer, currentPartitionQueue.getSequenceNumber(),
+								currentPartitionQueue.getReceiverId());
 
 						if (!buffer.isBuffer() &&
 								EventSerializer.fromBuffer(buffer, getClass().getClassLoader()).getClass() == EndOfPartitionEvent.class) {
@@ -215,7 +222,8 @@ class PartitionRequestQueue extends ChannelInboundHandlerAdapter {
 		releaseAllResources();
 
 		if (channel.isActive()) {
-			channel.writeAndFlush(new NettyMessage.ErrorResponse(cause)).addListener(ChannelFutureListener.CLOSE);
+			channel.writeAndFlush(new NettyMessage.ErrorResponse(cause))
+					.addListener(ChannelFutureListener.CLOSE);
 		}
 	}
 

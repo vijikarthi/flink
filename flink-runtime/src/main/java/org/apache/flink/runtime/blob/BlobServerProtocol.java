@@ -53,6 +53,9 @@ public class BlobServerProtocol {
 	/** Internal code to identify a reference via jobId as the key */
 	static final byte JOB_ID_SCOPE = 2;
 
+	/** The maximum length of secure cookie. */
+	static final int MAX_LENGTH_SECURE_COOKIE = 1024;
+
 	// --------------------------------------------------------------------------------------------
 
 	private BlobServerProtocol() {}

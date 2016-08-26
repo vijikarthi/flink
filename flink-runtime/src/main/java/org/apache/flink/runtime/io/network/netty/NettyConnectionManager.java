@@ -36,19 +36,23 @@ public class NettyConnectionManager implements ConnectionManager {
 
 	private final PartitionRequestClientFactory partitionRequestClientFactory;
 
+	private final String secureCookie;
+
 	public NettyConnectionManager(NettyConfig nettyConfig) {
 		this.server = new NettyServer(nettyConfig);
 		this.client = new NettyClient(nettyConfig);
 		this.bufferPool = new NettyBufferPool(nettyConfig.getNumberOfArenas());
 
 		this.partitionRequestClientFactory = new PartitionRequestClientFactory(client);
+
+		this.secureCookie = nettyConfig.getSecureCookie();
 	}
 
 	@Override
 	public void start(ResultPartitionProvider partitionProvider, TaskEventDispatcher taskEventDispatcher, NetworkBufferPool networkbufferPool)
 			throws IOException {
 		PartitionRequestProtocol partitionRequestProtocol =
-				new PartitionRequestProtocol(partitionProvider, taskEventDispatcher, networkbufferPool);
+				new PartitionRequestProtocol(partitionProvider, taskEventDispatcher, networkbufferPool, secureCookie);
 
 		client.init(partitionRequestProtocol, bufferPool);
 		server.init(partitionRequestProtocol, bufferPool);

@@ -144,8 +144,15 @@ public final class GlobalConfiguration {
 						continue;
 					}
 
-					LOG.debug("Loading configuration property: {}, {}", key, value);
 					config.setString(key, value);
+
+					//to prevent logging the secure cookie
+					if(key.equals(ConfigConstants.SECURITY_COOKIE) && value != null) {
+						value = "******";
+					}
+
+					LOG.debug("Loading configuration property: {}, {}", key, value);
+
 				}
 			}
 		} catch (IOException e) {

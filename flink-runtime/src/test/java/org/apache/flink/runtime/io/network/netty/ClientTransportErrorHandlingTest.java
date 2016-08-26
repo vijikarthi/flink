@@ -81,12 +81,14 @@ public class ClientTransportErrorHandlingTest {
 				return new ChannelHandler[0];
 			}
 
+			String secureCookie = "";
+
 			@Override
 			public ChannelHandler[] getClientChannelHandlers() {
 				return new PartitionRequestProtocol(
 						mock(ResultPartitionProvider.class),
 						mock(TaskEventDispatcher.class),
-						mock(NetworkBufferPool.class)).getClientChannelHandlers();
+						mock(NetworkBufferPool.class), secureCookie).getClientChannelHandlers();
 			}
 		};
 
@@ -115,8 +117,9 @@ public class ClientTransportErrorHandlingTest {
 			}
 		});
 
+		String secureCookie = "";
 		PartitionRequestClient requestClient = new PartitionRequestClient(
-				ch, handler, mock(ConnectionID.class), mock(PartitionRequestClientFactory.class));
+				ch, handler, mock(ConnectionID.class), mock(PartitionRequestClientFactory.class), secureCookie);
 
 		// Create input channels
 		RemoteInputChannel[] rich = new RemoteInputChannel[] {
@@ -174,6 +177,7 @@ public class ClientTransportErrorHandlingTest {
 			handler.addInputChannel(r);
 		}
 
+		String secureCookie = "";
 		// Error msg for channel[0]
 		ch.pipeline().fireChannelRead(new NettyMessage.ErrorResponse(
 				new RuntimeException("Expected test exception"),
@@ -231,12 +235,14 @@ public class ClientTransportErrorHandlingTest {
 				};
 			}
 
+			String secureCookie = "";
+
 			@Override
 			public ChannelHandler[] getClientChannelHandlers() {
 				return new PartitionRequestProtocol(
 						mock(ResultPartitionProvider.class),
 						mock(TaskEventDispatcher.class),
-						mock(NetworkBufferPool.class)).getClientChannelHandlers();
+						mock(NetworkBufferPool.class), secureCookie).getClientChannelHandlers();
 			}
 		};
 
@@ -381,10 +387,11 @@ public class ClientTransportErrorHandlingTest {
 	// ---------------------------------------------------------------------------------------------
 
 	private EmbeddedChannel createEmbeddedChannel() {
+		String secureCookie = "";
 		PartitionRequestProtocol protocol = new PartitionRequestProtocol(
 				mock(ResultPartitionProvider.class),
 				mock(TaskEventDispatcher.class),
-				mock(NetworkBufferPool.class));
+				mock(NetworkBufferPool.class), secureCookie);
 
 		return new EmbeddedChannel(protocol.getClientChannelHandlers());
 	}

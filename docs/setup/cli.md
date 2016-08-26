@@ -146,7 +146,7 @@ This allows the job to finish processing all inflight data.
 
 Returns the path of the created savepoint. You need this path to restore and dispose savepoints.
 
-You can optionally specify a `savepointDirectory` when triggering the savepoint. If you don't specify one here, you need to configure a default savepoint directory for the Flink installation (see [[savepoint.html#configuration]]).
+You can optionally specify a `savepointDirectory` when triggering the savepoint. If you don't specify one here, you need to configure a default savepoint directory for the Flink installation (see [Savepoints-Configuration]({{site.baseurl}}/setup/savepoints.html#Configuration)).
 
 ##### Cancel with a savepoint
 
@@ -156,7 +156,7 @@ You can atomically trigger a savepoint and cancel a job.
 ./bin/flink cancel -s  [savepointDirectory] <jobID>
 {% endhighlight %}
 
-If no savepoint directory is configured, you need to configure a default savepoint directory for the Flink installation (see [[savepoint.html#configuration]]).
+If no savepoint directory is configured, you need to configure a default savepoint directory for the Flink installation (see [Savepoints-Configuration]({{site.baseurl}}/setup/savepoints.html#Configuration)).
 
 The job will only be cancelled if the savepoint succeeds.
 
@@ -217,6 +217,8 @@ Action "run" compiles and runs a program.
                                                     java.net.URLClassLoader}.
      -d,--detached                                  If present, runs the job in
                                                     detached mode
+     -k,--cookie <secureCookie>                     Secure cookie to
+                                                    authenticate
      -m,--jobmanager <host:port>                    Address of the JobManager
                                                     (master) to which to
                                                     connect. Use this flag to
@@ -239,6 +241,7 @@ Action "run" compiles and runs a program.
                                                     Zookeeper sub-paths for high
                                                     availability mode
   Options for yarn-cluster mode:
+     -k,--cookie <arg>                    Secure cookie to authenticate
      -yD <arg>                            Dynamic properties
      -yd,--yarndetached                   Start detached
      -yid,--yarnapplicationId <arg>       Attach to running YARN session
@@ -284,6 +287,7 @@ Action "list" lists running and scheduled programs.
 
   Syntax: list [OPTIONS]
   "list" action options:
+     -k,--cookie <secureCookie>    Secure cookie to authenticate
      -m,--jobmanager <host:port>   Address of the JobManager (master) to which
                                    to connect. Use this flag to connect to a
                                    different JobManager than the one specified
@@ -299,6 +303,7 @@ Action "stop" stops a running program (streaming jobs only).
 
   Syntax: stop [OPTIONS] <Job ID>
   "stop" action options:
+     -k,--cookie <secureCookie>    Secure cookie to authenticate
      -m,--jobmanager <host:port>   Address of the JobManager (master) to which
                                    to connect. Use this flag to connect to a
                                    different JobManager than the one specified
@@ -312,6 +317,7 @@ Action "cancel" cancels a running program.
 
   Syntax: cancel [OPTIONS] <Job ID>
   "cancel" action options:
+     -k,--cookie <secureCookie>             Secure cookie to authenticate
      -m,--jobmanager <host:port>            Address of the JobManager (master)
                                             to which to connect. Use this flag
                                             to connect to a different JobManager
@@ -333,10 +339,12 @@ Action "savepoint" triggers savepoints for a running job or disposes existing on
   "savepoint" action options:
      -d,--dispose <arg>            Path of savepoint to dispose.
      -j,--jarfile <jarfile>        Flink program JAR file.
+     -k,--cookie <secureCookie>    Secure cookie to authenticate
      -m,--jobmanager <host:port>   Address of the JobManager (master) to which
                                    to connect. Use this flag to connect to a
                                    different JobManager than the one specified
                                    in the configuration.
   Options for yarn-cluster mode:
      -yid,--yarnapplicationId <arg>   Attach to running YARN session
+
 ~~~

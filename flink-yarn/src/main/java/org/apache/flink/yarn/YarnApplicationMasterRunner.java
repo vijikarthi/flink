@@ -243,6 +243,13 @@ public class YarnApplicationMasterRunner {
 				config.setString(ConfigConstants.SECURITY_PRINCIPAL_KEY, remoteKeytabPrincipal);
 			}
 
+			final String secureCookie = ENV.get(YarnConfigKeys.ENV_SECURE_AUTH_COOKIE);
+			if(secureCookie != null) {
+				LOG.info("Found secure Cookie from the environment Map");
+				config.setBoolean(ConfigConstants.SECURITY_ENABLED, true);
+				config.setString(ConfigConstants.SECURITY_COOKIE, secureCookie);
+			}
+
 			// Hadoop/Yarn configuration (loads config data automatically from classpath files)
 			final YarnConfiguration yarnConfig = new YarnConfiguration();
 
@@ -298,12 +305,18 @@ public class YarnApplicationMasterRunner {
 
 			// ---- (3) Generate the configuration for the TaskManagers
 
+			Configuration flinkConfigClone = config.clone();
+			//reset cookie since we don't want to store it in the container path, it will stay only in-memory
+			if(flinkConfigClone.getBoolean(ConfigConstants.SECURITY_ENABLED, false) == true) {
+				flinkConfigClone.setString(ConfigConstants.SECURITY_COOKIE, "");
+			}
+
 			final Configuration taskManagerConfig = BootstrapTools.generateTaskManagerConfiguration(
-					config, akkaHostname, akkaPort, slotsPerTaskManager, TASKMANAGER_REGISTRATION_TIMEOUT);
+					flinkConfigClone, akkaHostname, akkaPort, slotsPerTaskManager, TASKMANAGER_REGISTRATION_TIMEOUT);
 			LOG.debug("TaskManager configuration: {}", taskManagerConfig);
 
 			final ContainerLaunchContext taskManagerContext = createTaskManagerContext(
-				config, yarnConfig, ENV,
+				flinkConfigClone, yarnConfig, ENV,
 				taskManagerParameters, taskManagerConfig,
 				currDir, getTaskManagerClass(), LOG);
 
@@ -699,6 +712,11 @@ public class YarnApplicationMasterRunner {
 		if(remoteKeytabPath != null && remoteKeytabPrincipal != null) {
 			containerEnv.put(YarnConfigKeys.KEYTAB_PATH, remoteKeytabPath);
 			containerEnv.put(YarnConfigKeys.KEYTAB_PRINCIPAL, remoteKeytabPrincipal);
+		}
+
+		final String secureCookie = ENV.get(YarnConfigKeys.ENV_SECURE_AUTH_COOKIE);
+		if(secureCookie != null) {
+			containerEnv.put(YarnConfigKeys.ENV_SECURE_AUTH_COOKIE, secureCookie);
 		}
 
 		ctx.setEnvironment(containerEnv);

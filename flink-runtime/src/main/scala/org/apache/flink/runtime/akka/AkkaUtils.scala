@@ -301,6 +301,13 @@ object AkkaUtils {
       ConfigConstants.DEFAULT_SECURITY_SSL_ALGORITHMS)
     val akkaSSLAlgorithms = akkaSSLAlgorithmsString.split(",").toList.mkString("[", ",", "]")
 
+    val securityEnabled = configuration.getBoolean(ConfigConstants.SECURITY_ENABLED,
+                                                    ConfigConstants.DEFAULT_SECURITY_ENABLED)
+
+    val secureCookie = configuration.getString(ConfigConstants.SECURITY_COOKIE, null)
+
+    val requireCookie = if (securityEnabled) "on" else "off"
+
     val configString =
       s"""
          |akka {
@@ -389,7 +396,22 @@ object AkkaUtils {
       ""
     }
 
-    ConfigFactory.parseString(configString + hostnameConfigString + sslConfigString).resolve()
+    val cookieConfigString = if(securityEnabled){
+      s"""
+         |akka {
+         |  remote {
+         |    require-cookie = $requireCookie
+         |    secure-cookie = "$secureCookie"
+         |  }
+         |}
+         """.stripMargin
+    }else{
+      ""
+    }
+
+    ConfigFactory.parseString(configString + hostnameConfigString
+      + sslConfigString + cookieConfigString).resolve()
+
   }
 
   def getLogLevel: String = {

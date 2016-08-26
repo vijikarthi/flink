@@ -89,6 +89,9 @@ public class BlobServer extends Thread implements BlobService {
 	 */
 	private final Thread shutdownHook;
 
+	/** Secure cookie for service level authorization **/
+	private String secureCookie;
+
 	/**
 	 * Instantiates a new BLOB server and binds it to a free network port.
 	 *
@@ -106,6 +109,8 @@ public class BlobServer extends Thread implements BlobService {
 		String storageDirectory = config.getString(ConfigConstants.BLOB_STORAGE_DIRECTORY_KEY, null);
 		this.storageDir = BlobUtils.initStorageDirectory(storageDirectory);
 		LOG.info("Created BLOB server storage directory {}", storageDir);
+
+		secureCookie = BlobUtils.validateAndGetSecureCookie(config);
 
 		if (highAvailabilityMode == HighAvailabilityMode.NONE) {
 			this.blobStore = new VoidBlobStore();
@@ -450,5 +455,12 @@ public class BlobServer extends Thread implements BlobService {
 			return new ArrayList<BlobServerConnection>(activeConnections);
 		}
 	}
+
+	/* Secure cookie to authenticate */
+	@Override
+	public String getSecureCookie() { return secureCookie; }
+
+	/* Flag to indicate if service level authentication is enabled or not */
+	public boolean isSecurityEnabled() { return secureCookie != null; }
 
 }

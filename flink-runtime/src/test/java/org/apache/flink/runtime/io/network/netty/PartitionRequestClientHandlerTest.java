@@ -81,7 +81,8 @@ public class PartitionRequestClientHandlerTest {
 		final BufferResponse ReceivedBuffer = createBufferResponse(
 				TestBufferFactory.createBuffer(), 0, inputChannel.getInputChannelId());
 
-		final PartitionRequestClientHandler client = new PartitionRequestClientHandler();
+		String secureCookie = "";
+		final PartitionRequestClientHandler client = new PartitionRequestClientHandler(secureCookie);
 		client.addInputChannel(inputChannel);
 
 		client.channelRead(mock(ChannelHandlerContext.class), ReceivedBuffer);
@@ -109,7 +110,8 @@ public class PartitionRequestClientHandlerTest {
 		final BufferResponse receivedBuffer = createBufferResponse(
 				emptyBuffer, 0, inputChannel.getInputChannelId());
 
-		final PartitionRequestClientHandler client = new PartitionRequestClientHandler();
+		String secureCookie = "";
+		final PartitionRequestClientHandler client = new PartitionRequestClientHandler(secureCookie);
 		client.addInputChannel(inputChannel);
 
 		// Read the empty buffer
@@ -133,11 +135,12 @@ public class PartitionRequestClientHandlerTest {
 		when(inputChannel.getInputChannelId()).thenReturn(new InputChannelID());
 		when(inputChannel.getBufferProvider()).thenReturn(bufferProvider);
 
+		String secureCookie = "";
 		final ErrorResponse partitionNotFound = new ErrorResponse(
 				new PartitionNotFoundException(new ResultPartitionID()),
 				inputChannel.getInputChannelId());
 
-		final PartitionRequestClientHandler client = new PartitionRequestClientHandler();
+		final PartitionRequestClientHandler client = new PartitionRequestClientHandler(secureCookie);
 		client.addInputChannel(inputChannel);
 
 		// Mock channel context
@@ -157,7 +160,8 @@ public class PartitionRequestClientHandlerTest {
 		final RemoteInputChannel inputChannel = mock(RemoteInputChannel.class);
 		when(inputChannel.getInputChannelId()).thenReturn(new InputChannelID());
 
-		final PartitionRequestClientHandler client = new PartitionRequestClientHandler();
+		String secureCookie = "";
+		final PartitionRequestClientHandler client = new PartitionRequestClientHandler(secureCookie);
 		client.addInputChannel(inputChannel);
 
 		// Don't throw NPE
@@ -174,7 +178,8 @@ public class PartitionRequestClientHandlerTest {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testAutoReadAfterUnsuccessfulStagedMessage() throws Exception {
-		PartitionRequestClientHandler handler = new PartitionRequestClientHandler();
+		String secureCookie = "";
+		PartitionRequestClientHandler handler = new PartitionRequestClientHandler(secureCookie);
 		EmbeddedChannel channel = new EmbeddedChannel(handler);
 
 		final AtomicReference<EventListener<Buffer>> listener = new AtomicReference<>();
@@ -255,6 +260,7 @@ public class PartitionRequestClientHandlerTest {
 			InputChannelID receivingChannelId) throws IOException {
 
 		// Mock buffer to serialize
+		String secureCookie = "";
 		BufferResponse resp = new BufferResponse(buffer, sequenceNumber, receivingChannelId);
 
 		ByteBuf serialized = resp.write(UnpooledByteBufAllocator.DEFAULT);

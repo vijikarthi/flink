@@ -23,6 +23,8 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
+import org.apache.commons.configuration.HierarchicalINIConfiguration;
+import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.client.cli.CliFrontendParser;
 import org.apache.flink.client.cli.CustomCommandLine;
@@ -62,6 +64,7 @@ import java.util.Properties;
 
 import static org.apache.flink.client.cli.CliFrontendParser.ADDRESS_OPTION;
 import static org.apache.flink.configuration.ConfigConstants.HA_ZOOKEEPER_NAMESPACE_KEY;
+import static org.apache.flink.configuration.ConfigConstants.DEFAULT_SECURITY_ENABLED;
 
 /**
  * Class handling the command line interface to the YARN session.
@@ -108,6 +111,11 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 
 	private final Options ALL_OPTIONS;
 
+	private static final String fileName = "yarn-app.ini";
+	private static final String cookieKey = "secureCookie";
+
+	private final Option SECURE_COOKIE_OPTION;
+
 	/**
 	 * Dynamic properties allow the user to specify additional configuration values with -D, such as
 	 *  -D fs.overwrite-files=true  -D taskmanager.network.numberOfBuffers=16368
@@ -141,6 +149,7 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 		STREAMING = new Option(shortPrefix + "st", longPrefix + "streaming", false, "Start Flink in streaming mode");
 		NAME = new Option(shortPrefix + "nm", longPrefix + "name", true, "Set a custom name for the application on YARN");
 		ZOOKEEPER_NAMESPACE = new Option(shortPrefix + "z", longPrefix + "zookeeperNamespace", true, "Namespace to create the Zookeeper sub-paths for high availability mode");
+		SECURE_COOKIE_OPTION = new Option("k", "cookie", true,"Secure cookie to authenticate");
 
 		ALL_OPTIONS = new Options();
 		ALL_OPTIONS.addOption(FLINK_JAR);
@@ -157,6 +166,7 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 		ALL_OPTIONS.addOption(NAME);
 		ALL_OPTIONS.addOption(APPLICATION_ID);
 		ALL_OPTIONS.addOption(ZOOKEEPER_NAMESPACE);
+		ALL_OPTIONS.addOption(SECURE_COOKIE_OPTION);
 	}
 
 
@@ -398,6 +408,7 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 				"help - show these commands\n" +
 				"stop - stop the YARN session";
 		int numTaskmanagers = 0;
+		String applicationId = yarnCluster.getApplicationId().toString();
 		try {
 			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 			label:
@@ -442,8 +453,10 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 						case "quit":
 						case "stop":
 							yarnCluster.shutdownCluster();
+							if (yarnCluster.hasBeenShutdown()) {
+								removeAppState(applicationId);
+							}
 							break label;
-
 						case "help":
 							System.err.println(HELP);
 							break;
@@ -506,6 +519,10 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 			CommandLine cmdLine,
 			Configuration config) throws UnsupportedOperationException {
 
+		// get secure cookie if passed as argument
+		String secureCookieArg = cmdLine.hasOption(SECURE_COOKIE_OPTION.getOpt()) ?
+				cmdLine.getOptionValue(SECURE_COOKIE_OPTION.getOpt()) : null;
+
 		// first check for an application id, then try to load from yarn properties
 		String applicationID = cmdLine.hasOption(APPLICATION_ID.getOpt()) ?
 				cmdLine.getOptionValue(APPLICATION_ID.getOpt())
@@ -516,6 +533,24 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 					cmdLine.getOptionValue(ZOOKEEPER_NAMESPACE.getOpt())
 					: config.getString(HighAvailabilityOptions.HA_CLUSTER_ID, applicationID);
 			config.setString(HighAvailabilityOptions.HA_CLUSTER_ID, zkNamespace);
+
+			// Use cookie from CLI if provided, instead look for configuration setting and finally
+			// try to retrieve from the persisted file
+			boolean securityEnabled = config.getBoolean(ConfigConstants.SECURITY_ENABLED, DEFAULT_SECURITY_ENABLED);
+			LOG.debug("Security Enabled ? {}", securityEnabled);
+			if(securityEnabled ) {
+				if(secureCookieArg != null) {
+					LOG.debug("Security is enabled and secure cookie is provided as argument");
+					config.setString(ConfigConstants.SECURITY_COOKIE, secureCookieArg);
+				} else {
+					String secureCookie = config.getString(ConfigConstants.SECURITY_COOKIE, null);
+					if(secureCookie == null) {
+						LOG.debug("Security is enabled but cookie not provided. retrieving cookie from properties file");
+						secureCookie = getAppSecureCookie(applicationID);
+						config.setString(ConfigConstants.SECURITY_COOKIE, secureCookie);
+					}
+				}
+			}
 
 			AbstractYarnClusterDescriptor yarnDescriptor = getClusterDescriptor();
 			yarnDescriptor.setFlinkConfiguration(config);
@@ -528,11 +563,34 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 	@Override
 	public YarnClusterClient createCluster(String applicationName, CommandLine cmdLine, Configuration config) {
 
+		// get secure cookie if passed as argument
+		String secureCookieArg = cmdLine.hasOption(SECURE_COOKIE_OPTION.getOpt()) ?
+				cmdLine.getOptionValue(SECURE_COOKIE_OPTION.getOpt()) : null;
+
+		boolean securityEnabled = config.getBoolean(ConfigConstants.SECURITY_ENABLED, DEFAULT_SECURITY_ENABLED);
+		LOG.debug("Security Enabled ? {}", securityEnabled);
+
+		//override cookie configuration if supplied through CLI
+		if(securityEnabled && secureCookieArg != null) {
+			LOG.debug("Secure cookie is provided as CLI argument and will be used");
+			config.setBoolean(ConfigConstants.SECURITY_ENABLED, true);
+			config.setString(ConfigConstants.SECURITY_COOKIE, secureCookieArg);
+		}
+
 		AbstractYarnClusterDescriptor yarnClusterDescriptor = createDescriptor(applicationName, cmdLine);
 		yarnClusterDescriptor.setFlinkConfiguration(config);
 
 		try {
-			return yarnClusterDescriptor.deploy();
+			YarnClusterClient yarnCluster = yarnClusterDescriptor.deploy();
+
+			//persist secure cookie
+			String secureCookie = yarnClusterDescriptor.getFlinkConfiguration()
+														.getString(ConfigConstants.SECURITY_COOKIE, null);
+			if(securityEnabled && secureCookie != null) {
+				persistAppState(yarnCluster.getApplicationId().toString(), secureCookie);
+			}
+
+			return yarnCluster;
 		} catch (Exception e) {
 			throw new RuntimeException("Error deploying the YARN cluster", e);
 		}
@@ -557,6 +615,10 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 			return 1;
 		}
 
+		// get secure cookie if passed as argument
+		String secureCookieArg = cmd.hasOption(SECURE_COOKIE_OPTION.getOpt()) ?
+				cmd.getOptionValue(SECURE_COOKIE_OPTION.getOpt()) : null;
+
 		// Query cluster for metrics
 		if (cmd.hasOption(QUERY.getOpt())) {
 			AbstractYarnClusterDescriptor yarnDescriptor = getClusterDescriptor();
@@ -571,7 +633,6 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 			System.out.println(description);
 			return 0;
 		} else if (cmd.hasOption(APPLICATION_ID.getOpt())) {
-
 			AbstractYarnClusterDescriptor yarnDescriptor = getClusterDescriptor();
 
 			//configure ZK namespace depending on the value passed
@@ -581,6 +642,18 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 									.getString(HA_ZOOKEEPER_NAMESPACE_KEY, cmd.getOptionValue(APPLICATION_ID.getOpt()));
 			LOG.info("Going to use the ZK namespace: {}", zkNamespace);
 			yarnDescriptor.getFlinkConfiguration().setString(HA_ZOOKEEPER_NAMESPACE_KEY, zkNamespace);
+
+			boolean securityEnabled = yarnDescriptor.getFlinkConfiguration()
+													.getBoolean(ConfigConstants.SECURITY_ENABLED,
+																	DEFAULT_SECURITY_ENABLED);
+			LOG.debug("Security Enabled ? {}", securityEnabled);
+
+			//override cookie configuration if supplied through CLI
+			if(securityEnabled && secureCookieArg != null) {
+				LOG.debug("Secure cookie is provided as CLI argument and will be used");
+				yarnDescriptor.getFlinkConfiguration().setBoolean(ConfigConstants.SECURITY_ENABLED, true);
+				yarnDescriptor.getFlinkConfiguration().setString(ConfigConstants.SECURITY_COOKIE, secureCookieArg);
+			}
 
 			try {
 				yarnCluster = yarnDescriptor.retrieve(cmd.getOptionValue(APPLICATION_ID.getOpt()));
@@ -605,6 +678,18 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 				System.err.println("Error while starting the YARN Client: " + e.getMessage());
 				e.printStackTrace(System.err);
 				return 1;
+			}
+
+			boolean securityEnabled = yarnDescriptor.getFlinkConfiguration()
+													.getBoolean(ConfigConstants.SECURITY_ENABLED,
+																DEFAULT_SECURITY_ENABLED);
+			LOG.debug("Security Enabled ? {}", securityEnabled);
+
+			//override cookie configuration if supplied through CLI
+			if(securityEnabled && secureCookieArg != null) {
+				LOG.debug("Secure cookie is provided as CLI argument and will be used");
+				yarnDescriptor.getFlinkConfiguration().setBoolean(ConfigConstants.SECURITY_ENABLED, true);
+				yarnDescriptor.getFlinkConfiguration().setString(ConfigConstants.SECURITY_COOKIE, secureCookieArg);
 			}
 
 			try {
@@ -637,6 +722,14 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 				yarnProps.setProperty(YARN_PROPERTIES_DYNAMIC_PROPERTIES_STRING,
 						yarnDescriptor.getDynamicPropertiesEncoded());
 			}
+
+			//persist secure cookie
+			String secureCookie = yarnDescriptor.getFlinkConfiguration()
+										.getString(ConfigConstants.SECURITY_COOKIE, null);
+			if(securityEnabled && secureCookie != null) {
+				persistAppState(yarnCluster.getApplicationId().toString(), secureCookie);
+			}
+
 			writeYarnProperties(yarnProps, yarnPropertiesFile);
 
 			//------------------ ClusterClient running, let user control it ------------
@@ -701,6 +794,93 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 			conf.getString(ConfigConstants.YARN_PROPERTIES_FILE_LOCATION, defaultPropertiesFileLocation);
 
 		return new File(propertiesFileLocation, YARN_PROPERTIES_FILE + currentUser);
+	}
+
+	public static void persistAppState(String appId, String cookie) {
+		if(appId == null || cookie == null) {
+			return;
+		}
+		String path = System.getProperty("user.home") + File.separator + fileName;
+		LOG.debug("Going to persist cookie for the appID: {} in {} ", appId, path);
+		try {
+			File f = new File(path);
+			if(!f.exists()) {
+				f.createNewFile();
+			}
+			HierarchicalINIConfiguration config = new HierarchicalINIConfiguration(path);
+			SubnodeConfiguration subNode = config.getSection(appId);
+			if (subNode.containsKey(cookieKey)) {
+				String errorMessage = "Secure Cookie is already found in "+ path + " for the appID: "+ appId;
+				LOG.error(errorMessage);
+				throw new RuntimeException(errorMessage);
+			}
+			subNode.addProperty(cookieKey, cookie);
+			config.save();
+			LOG.debug("Persisted cookie for the appID: {}", appId);
+		} catch(Exception e) {
+			LOG.error("Exception occurred while persisting app state for app id: {}. Exception: {}", appId, e);
+			throw new RuntimeException(e);
+		}
+	}
+
+	public static String getAppSecureCookie(String appId) {
+		if(appId == null) {
+			String errorMessage = "Application ID cannot be null";
+			LOG.error(errorMessage);
+			throw new RuntimeException(errorMessage);
+		}
+
+		String cookieFromFile;
+		String path = System.getProperty("user.home") + File.separator + fileName;
+		LOG.debug("Going to fetch cookie for the appID: {} from {}", appId, path);
+
+		try {
+			File f = new File(path);
+			if (!f.exists()) {
+				String errorMessage = "Could not find the file: " + path + " in user home directory";
+				LOG.error(errorMessage);
+				throw new RuntimeException(errorMessage);
+			}
+			HierarchicalINIConfiguration config = new HierarchicalINIConfiguration(path);
+			SubnodeConfiguration subNode = config.getSection(appId);
+			if (!subNode.containsKey(cookieKey)) {
+				String errorMessage = "Could  not find the app ID section in "+ path + " for the appID: "+ appId;
+				LOG.error(errorMessage);
+				throw new RuntimeException(errorMessage);
+			}
+			cookieFromFile = subNode.getString(cookieKey, "");
+			if(cookieFromFile.length() == 0) {
+				String errorMessage = "Could  not find cookie in "+ path + " for the appID: "+ appId;
+				LOG.error(errorMessage);
+				throw new RuntimeException(errorMessage);
+			}
+		} catch(Exception e) {
+			LOG.error("Exception occurred while fetching cookie for app id: {} Exception: {}", appId, e);
+			throw new RuntimeException(e);
+		}
+
+		LOG.debug("Found cookie for the appID: {}", appId);
+		return cookieFromFile;
+	}
+
+	public static void removeAppState(String appId) {
+		if(appId == null) { return; }
+		String path = System.getProperty("user.home") + File.separator + fileName;
+		LOG.debug("Going to remove the reference for the appId: {} from {}", appId, path);
+		try {
+			File f = new File(path);
+			if (!f.exists()) {
+				String errorMessage = "Could not find the file: " + path + " in user home directory";
+				LOG.warn(errorMessage);
+				return;
+			}
+			HierarchicalINIConfiguration config = new HierarchicalINIConfiguration(path);
+			config.clearTree(appId);
+			config.save();
+			LOG.debug("Removed the reference for the appId: {} from {}", appId, path);
+		} catch(Exception e) {
+			LOG.warn("Exception occurred while fetching cookie for app id: {} Exception: {}", appId, e);
+		}
 	}
 
 	protected AbstractYarnClusterDescriptor getClusterDescriptor() {

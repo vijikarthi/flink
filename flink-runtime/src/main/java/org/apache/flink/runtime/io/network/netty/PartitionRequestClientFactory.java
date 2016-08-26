@@ -40,10 +40,13 @@ class PartitionRequestClientFactory {
 
 	private final NettyClient nettyClient;
 
+	private final String secureCookie;
+
 	private final ConcurrentMap<ConnectionID, Object> clients = new ConcurrentHashMap<ConnectionID, Object>();
 
 	PartitionRequestClientFactory(NettyClient nettyClient) {
 		this.nettyClient = nettyClient;
+		this.secureCookie = nettyClient.getConfig().getSecureCookie();
 	}
 
 	/**
@@ -74,7 +77,7 @@ class PartitionRequestClientFactory {
 				// We create a "connecting future" and atomically add it to the map.
 				// Only the thread that really added it establishes the channel.
 				// The others need to wait on that original establisher's future.
-				ConnectingChannel connectingChannel = new ConnectingChannel(connectionId, this);
+				ConnectingChannel connectingChannel = new ConnectingChannel(connectionId, this, secureCookie);
 				Object old = clients.putIfAbsent(connectionId, connectingChannel);
 
 				if (old == null) {
@@ -138,9 +141,13 @@ class PartitionRequestClientFactory {
 
 		private boolean disposeRequestClient = false;
 
-		public ConnectingChannel(ConnectionID connectionId, PartitionRequestClientFactory clientFactory) {
+		private final String secureCookie;
+
+		public ConnectingChannel(ConnectionID connectionId, PartitionRequestClientFactory clientFactory,
+									String secureCookie) {
 			this.connectionId = connectionId;
 			this.clientFactory = clientFactory;
+			this.secureCookie = secureCookie;
 		}
 
 		private boolean dispose() {
@@ -167,7 +174,7 @@ class PartitionRequestClientFactory {
 							.get(PartitionRequestClientHandler.class);
 
 					partitionRequestClient = new PartitionRequestClient(
-							channel, requestHandler, connectionId, clientFactory);
+							channel, requestHandler, connectionId, clientFactory, secureCookie);
 
 					if (disposeRequestClient) {
 						partitionRequestClient.disposeIfNotUsed();

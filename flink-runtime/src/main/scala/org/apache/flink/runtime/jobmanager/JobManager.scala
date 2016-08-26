@@ -38,7 +38,7 @@ import org.apache.flink.metrics.groups.UnregisteredMetricsGroup
 import org.apache.flink.metrics.{Gauge, MetricGroup}
 import org.apache.flink.runtime.accumulators.AccumulatorSnapshot
 import org.apache.flink.runtime.akka.{AkkaUtils, ListeningBehaviour}
-import org.apache.flink.runtime.blob.BlobServer
+import org.apache.flink.runtime.blob.{BlobServer, BlobUtils}
 import org.apache.flink.runtime.checkpoint._
 import org.apache.flink.runtime.checkpoint.savepoint.{SavepointLoader, SavepointStore}
 import org.apache.flink.runtime.client._
@@ -1007,6 +1007,9 @@ class JobManager(
 
     case RequestBlobManagerPort =>
       sender ! decorateMessage(libraryCacheManager.getBlobServerPort)
+
+    case RequestBlobManagerSecureCookie =>
+      sender ! decorateMessage(libraryCacheManager.getSecureCookie)
 
     case RequestArchive =>
       sender ! decorateMessage(ResponseArchive(archive))
@@ -1995,6 +1998,9 @@ object JobManager {
         System.exit(STARTUP_FAILURE_RETURN_CODE)
         null
     }
+
+    //validate secure cookie configuration
+    BlobUtils.validateAndGetSecureCookie(configuration)
 
     // we want to check that the JobManager hostname is in the config
     // if it is not in there, the actor system will bind to the loopback interface's

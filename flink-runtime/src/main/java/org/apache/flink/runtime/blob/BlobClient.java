@@ -18,9 +18,11 @@
 
 package org.apache.flink.runtime.blob;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.core.fs.FSDataInputStream;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.core.fs.Path;
@@ -76,6 +78,9 @@ public final class BlobClient implements Closeable {
 	/** The socket connection to the BLOB server. */
 	private Socket socket;
 
+	/** Secure cookie value from Flink Configuration **/
+	private String secureCookie = "";
+
 	/**
 	 * Instantiates a new BLOB client.
 	 * 
@@ -87,6 +92,19 @@ public final class BlobClient implements Closeable {
 	 *         thrown if the connection to the BLOB server could not be established
 	 */
 	public BlobClient(InetSocketAddress serverAddress, Configuration clientConfig) throws IOException {
+
+		this.socket = new Socket();
+
+		if(clientConfig != null) {
+			boolean securityEnabled = clientConfig.getBoolean(ConfigConstants.SECURITY_ENABLED,
+					ConfigConstants.DEFAULT_SECURITY_ENABLED);
+
+			this.secureCookie = clientConfig.getString(ConfigConstants.SECURITY_COOKIE, "");
+
+			if (securityEnabled && this.secureCookie == "") {
+				throw new IllegalConfigurationException(ConfigConstants.SECURITY_COOKIE + " must be configured.");
+			}
+		}
 
 		try {
 			// Check if ssl is enabled
@@ -231,6 +249,8 @@ public final class BlobClient implements Closeable {
 	 *         thrown if an I/O error occurs while writing the header data to the output stream
 	 */
 	private void sendGetHeader(OutputStream outputStream, JobID jobID, String key, BlobKey blobKey) throws IOException {
+
+		sendSecureCookie(outputStream);
 
 		// Signal type of operation
 		outputStream.write(GET_OPERATION);
@@ -562,6 +582,8 @@ public final class BlobClient implements Closeable {
 			throw new IllegalArgumentException();
 		}
 
+		sendSecureCookie(outputStream);
+
 		// Signal type of operation
 		outputStream.write(PUT_OPERATION);
 
@@ -659,6 +681,8 @@ public final class BlobClient implements Closeable {
 			final OutputStream outputStream = this.socket.getOutputStream();
 			final InputStream inputStream = this.socket.getInputStream();
 
+			sendSecureCookie(outputStream);
+
 			// Signal type of operation
 			outputStream.write(DELETE_OPERATION);
 
@@ -703,6 +727,12 @@ public final class BlobClient implements Closeable {
 		}
 	}
 
+	private void sendSecureCookie(OutputStream outputStream) throws IOException {
+		byte[] secureCookieBytes = secureCookie.getBytes(BlobUtils.DEFAULT_CHARSET);
+		writeLength(secureCookieBytes.length, outputStream);
+		outputStream.write(secureCookieBytes);
+	}
+
 	/**
 	 * Retrieves the {@link BlobServer} address from the JobManager and uploads
 	 * the JAR files to it.
@@ -725,7 +755,21 @@ public final class BlobClient implements Closeable {
 			Object msg = JobManagerMessages.getRequestBlobManagerPort();
 			Future<Object> futureBlobPort = jobManager.ask(msg, askTimeout);
 
+			Object secureCookieMsg = JobManagerMessages.getRequestBlobManagerSecureCookie();
+			Future<Object> futureSecureCookie = jobManager.ask(secureCookieMsg, askTimeout);
+
 			try {
+				String secureCookie = null;
+
+				Object cookie = Await.result(futureSecureCookie, askTimeout);
+				if(cookie instanceof String) {
+					secureCookie = (String) cookie;
+				}
+
+				if(!StringUtils.isBlank(secureCookie)) {
+					LOG.debug("Received secure Cookie from JM");
+				}
+
 				// Retrieve address
 				Object result = Await.result(futureBlobPort, askTimeout);
 				if (result instanceof Integer) {

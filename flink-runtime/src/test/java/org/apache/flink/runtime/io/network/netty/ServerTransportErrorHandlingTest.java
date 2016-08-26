@@ -60,6 +60,8 @@ public class ServerTransportErrorHandlingTest {
 
 		final CountDownLatch sync = new CountDownLatch(1);
 
+		final String secureCookie = "";
+
 		final ResultPartitionManager partitionManager = mock(ResultPartitionManager.class);
 
 		when(partitionManager
@@ -72,7 +74,7 @@ public class ServerTransportErrorHandlingTest {
 				return new PartitionRequestProtocol(
 						partitionManager,
 						mock(TaskEventDispatcher.class),
-						mock(NetworkBufferPool.class)).getServerChannelHandlers();
+						mock(NetworkBufferPool.class), secureCookie).getServerChannelHandlers();
 			}
 
 			@Override
@@ -100,7 +102,7 @@ public class ServerTransportErrorHandlingTest {
 			Channel ch = connect(serverAndClient);
 
 			// Write something to trigger close by server
-			ch.writeAndFlush(new PartitionRequest(new ResultPartitionID(), 0, new InputChannelID()));
+			ch.writeAndFlush(new PartitionRequest(new ResultPartitionID(), 0, new InputChannelID(), secureCookie));
 
 			// Wait for the notification
 			if (!sync.await(TestingUtils.TESTING_DURATION().toMillis(), TimeUnit.MILLISECONDS)) {
