@@ -28,6 +28,8 @@ This document briefly describes how Flink security works in the context of vario
 and the connectors that participates in Flink Job execution stage. This documentation can be helpful for both administrators and developers 
 who plans to run Flink on a secure environment.
 
+# Authentication Support
+
 ## Objective
 
 The primary goal of Flink security model is to enable secure data access for jobs within a cluster via connectors. In a production deployment scenario, 
@@ -35,7 +37,7 @@ streaming jobs are understood to run for longer period of time (days/weeks/month
 data sources throughout the life of the job. The current implementation supports running Flink clusters (Job Manager/Task Manager/Jobs) under the 
 context of a Kerberos identity based on Keytab credential supplied during deployment time. Any jobs submitted will continue to run in the identity of the cluster.
 
-## How Flink Security works
+## How it works
 Flink deployment includes running Job Manager/ZooKeeper, Task Manager(s), Web UI and Job(s). Jobs (user code) can be submitted through web UI and/or CLI. 
 A Job program may use one or more connectors (Kafka, HDFS, Cassandra, Flume, Kinesis etc.,) and each connector may have a specific security 
 requirements (Kerberos, database based, SSL/TLS, custom etc.,). While satisfying the security requirements for all the connectors evolves over a period 
@@ -85,3 +87,68 @@ Security implementation details are based on <a href="https://github.com/apache/
 ## Token Renewal
 
 UGI and Kafka/ZK login module implementations takes care of auto-renewing the tickets upon reaching expiry and no further action is needed on the part of Flink.
+
+# Authorization Support
+
+Service-level authorization is the initial authorization mechanism to ensure clients (or servers) connecting to the Flink cluster are authorized to do so. The purpose is to prevent a cluster from being used by an unauthorized user, whether to execute jobs, disrupt cluster functionality, or gain access to secrets stored within the cluster.
+
+The primary goal is to secure the following components by introducing a shared secret mechanism to control the authorization. When security is enabled, the configured shared secret will be used as the basis to validate all the incoming/outgoing request.
+
+- Akka Endpoints
+
+- Flink Web Module
+
+- Blob Service
+
+## Security Configurations
+
+Secure cookie configuration can be supplied by adding below configuration elements to Flink configuration file:
+
+- `security.enabled`: A boolean value (true|false) indicating security is enabled or not.
+
+- `security.cookie` : Secure cookie value to be used for authorization
+
+Once a cluster is configured to run with secure cookie option, any request to the cluster will be validated for the existence of secure cookie.
+
+## Standalone Mode:
+
+In standalone mode of deployment, if security is enabled then it is mandatory to provide the secure cookie configuration in the Flink configuration file. A missing cookie configuration will flag an error.
+
+## Yarn Mode:
+
+In Yarn mode of deployment, secure cookie can be provided in multiple ways.
+
+- Flink configuration
+
+- As command line argument (-k or --cookie) to Yarn session CLI 
+
+- Auto generated if not supplied through Flink configuration or Yarn session CLI argument
+
+The secure cookie will be made available as container environment variable for the application containers (JM/TM) to make use of it.
+
+On the client machine from where the Yarn session CLI is used to create the Flink application, the application specific secure cookie will be persisted in an INI file format in the user home directory. Any subsequent access to the Flink cluster using Yarn Session CLI (by passing the application ID) will automatically include appropriate secure cookie associated with the application ID to communicate with the cluster.
+
+Since the secure cookie is persisted in the user home directory, it is safe enough to consider that it can be accessed only by the user who created the cluster.
+
+### Akka endpoints
+
+Akka remoting allows you to specify a secure cookie that will be exchanged and ensured to be identical in the connection handshake between the client and the server. If they are not identical then the client will be refused to connect to the server.
+
+The secure cookie configuration supplied through the Flink configuration entries will be used to populate Akka configurations.
+
+akka.remote {
+  secure-cookie = "foo"
+  require-cookie = on
+}
+
+### Flink web module
+
+The rest component of the web runtime monitor which is based on Netty HTTP is secured by using standard HTTP basic authentication mechanism. The HTTP request handler code will look for "Authorization" header for every request it receives and if the header is missing or contains invalid secure cookie, it prompts the user to provide the secure cookie details. 
+
+### Blob service
+
+The message header (GET|PUT|DELETE) is altered to include the secure cookie details as part of the message (length of the cookie followed by the cookie value). Blob server validates the secure cookie passed by the client and ensure it matches with its own configuration for the request to further proceed.
+
+Message header format:
+
+| COOKIE LENGTH | COOKIE VALUE | OPERATION CODE | KEY TYPE | KEY LENGTH | KEY VALUE |

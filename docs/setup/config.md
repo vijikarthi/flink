@@ -125,6 +125,25 @@ Kerberos ticket renewal is abstracted and automatically handled by the Hadoop/Ka
 
 For Kafka and ZK, process-wide JAAS config will be created using the provided security credentials and the Kerberos authentication will be handled by Kafka/ZK login handlers.
 
+### Secure Cookie Authentication
+
+Flink supports hardening below cluster components through secure cookie implementation.
+
+- Akka Endpoints
+
+- Flink Web Module
+
+- Blob Service
+
+Secure cookie authentication can be enabled by providing below configurations to Flink configuration file.
+
+- `security.enabled`: A boolean value (true|false) indicating security is enabled or not.
+- `security.cookie` : Secure cookie value to be used for authorization. For standalone deployment mode, the secure cookie value is mandatory when security is enabled but for the Yarn mode it is optional (auto-generated if not provided).
+
+Alternatively, secure cookie value can be provided through Flink/Yarn CLI using "-k" or "--cookie" parameter option.
+
+The web runtime module prompts for secure cookie using standard basic HTTP authentication mechanism, where the user id field is noop and the password field will be used to capture the secure cookie.
+
 ### Other
 
 - `taskmanager.tmp.dirs`: The directory for temporary files, or a list of directories separated by the systems directory delimiter (for example ':' (colon) on Linux/Unix). If multiple directories are specified, then the temporary files will be distributed across the directories in a round-robin fashion. The I/O manager component will spawn one reading and one writing thread per directory. A directory may be listed multiple times to have the I/O manager use multiple threads for it (for example if it is physically stored on a very fast disc or RAID) (DEFAULT: The system's tmp dir).

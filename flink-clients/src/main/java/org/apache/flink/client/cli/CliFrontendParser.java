@@ -85,6 +85,9 @@ public class CliFrontendParser {
 	static final Option ZOOKEEPER_NAMESPACE_OPTION = new Option("z", "zookeeperNamespace", true,
 			"Namespace to create the Zookeeper sub-paths for high availability mode");
 
+	static final Option SECURE_COOKIE_OPTION = new Option("k", "cookie", true,
+			"Secure cookie to authenticate");
+
 	static {
 		HELP_OPTION.setRequired(false);
 
@@ -118,6 +121,9 @@ public class CliFrontendParser {
 
 		ZOOKEEPER_NAMESPACE_OPTION.setRequired(false);
 		ZOOKEEPER_NAMESPACE_OPTION.setArgName("zookeeperNamespace");
+
+		SECURE_COOKIE_OPTION.setRequired(false);
+		SECURE_COOKIE_OPTION.setArgName("secureCookie");
 	}
 
 	private static final Options RUN_OPTIONS = getRunOptions(buildGeneralOptions(new Options()));
@@ -171,6 +177,7 @@ public class CliFrontendParser {
 
 	private static Options getJobManagerAddressOption(Options options) {
 		options.addOption(ADDRESS_OPTION);
+		options.addOption(SECURE_COOKIE_OPTION);
 		return options;
 	}
 

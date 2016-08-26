@@ -21,10 +21,13 @@ package org.apache.flink.runtime.blob;
 import com.google.common.io.BaseEncoding;
 import org.apache.commons.io.FileUtils;
 import org.apache.flink.api.common.JobID;
+import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.util.IOUtils;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
 import java.io.File;
@@ -39,12 +42,15 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 
+import static org.apache.flink.configuration.ConfigConstants.DEFAULT_SECURITY_ENABLED;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * Utility class to work with blob data.
  */
 public class BlobUtils {
+
+	private static final Logger LOG = LoggerFactory.getLogger(BlobUtils.class);
 
 	/**
 	 * Algorithm to be used for calculating the BLOB keys.
@@ -390,6 +396,24 @@ public class BlobUtils {
 		else {
 			throw new IOException("Cannot find required BLOB at '" + recoveryPath + "' for recovery.");
 		}
+	}
+
+	/**
+	 * Utility method to validate secure cookie from Flink configuration instance
+	 * @throws
+	 */
+	public static String validateAndGetSecureCookie(Configuration configuration) {
+		String secureCookie = null;
+		if(configuration.getBoolean(ConfigConstants.SECURITY_ENABLED, DEFAULT_SECURITY_ENABLED) == true) {
+			secureCookie = configuration.getString(ConfigConstants.SECURITY_COOKIE, null);
+			if(secureCookie == null) {
+				String message = "Missing " + ConfigConstants.SECURITY_COOKIE +
+						" configuration in Flink configuration file";
+				LOG.error(message);
+				throw new RuntimeException(message);
+			}
+		}
+		return secureCookie;
 	}
 
 	/**

@@ -158,6 +158,7 @@ jobmanager.web.port: 8081
 #==============================================================================
 # ZK Security Configuration (optional configuration)
 #==============================================================================
+
 # Below configurations are applicable if ZK quorum is configured for Kerberos security
 
 # SASL authentication is disabled by default and can be enabled by changig the value to false
@@ -167,3 +168,13 @@ jobmanager.web.port: 8081
 # Override below configuration to provide custom ZK service name if configured
 #
 # zookeeper.sasl.service-name: zookeeper
+
+#==============================================================================
+# Service Authorization Configuration (optional configuration)
+#==============================================================================
+
+# Flag to enable/disable service level authorization (disabled by default)
+#security.enabled: false
+
+#secure random cookie to be used (auto-generated or static if value supplied)
+#security.cookie: foo

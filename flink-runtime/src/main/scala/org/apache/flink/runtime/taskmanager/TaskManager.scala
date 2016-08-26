@@ -43,7 +43,7 @@ import org.apache.flink.runtime.accumulators.AccumulatorSnapshot
 import org.apache.flink.runtime.clusterframework.messages.StopCluster
 import org.apache.flink.runtime.clusterframework.types.ResourceID
 import org.apache.flink.runtime.akka.AkkaUtils
-import org.apache.flink.runtime.blob.{BlobCache, BlobClient, BlobService}
+import org.apache.flink.runtime.blob.{BlobCache, BlobClient, BlobService, BlobUtils}
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager
 import org.apache.flink.runtime.deployment.{InputChannelDeploymentDescriptor, TaskDeploymentDescriptor}
 import org.apache.flink.runtime.execution.ExecutionState
@@ -1516,6 +1516,9 @@ object TaskManager {
         System.exit(STARTUP_FAILURE_RETURN_CODE)
         null
     }
+
+    //validate secure cookie configuration
+    BlobUtils.validateAndGetSecureCookie(configuration)
 
     // In Standalone mode, we generate a resource identifier.
     val resourceId = ResourceID.generate()

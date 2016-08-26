@@ -18,9 +18,7 @@
 
 package org.apache.flink.runtime.jobmanager;
 
-import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
-import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.akka.AkkaUtils;
@@ -28,7 +26,6 @@ import org.apache.flink.runtime.akka.ListeningBehaviour;
 import org.apache.flink.runtime.blob.BlobClient;
 import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.client.JobExecutionException;
-import org.apache.flink.runtime.clusterframework.standalone.StandaloneResourceManager;
 import org.apache.flink.runtime.instance.ActorGateway;
 import org.apache.flink.runtime.jobgraph.JobVertex;
 import org.apache.flink.runtime.jobgraph.JobGraph;
@@ -117,7 +114,9 @@ public class JobSubmitTest {
 
 			// upload two dummy bytes and add their keys to the job graph as dependencies
 			BlobKey key1, key2;
-			BlobClient bc = new BlobClient(new InetSocketAddress("localhost", blobPort));
+			Configuration config = new Configuration();
+			String secureCookie = config.getString(ConfigConstants.SECURITY_COOKIE, null);
+			BlobClient bc = new BlobClient(new InetSocketAddress("localhost", blobPort), secureCookie);
 			try {
 				key1 = bc.put(new byte[10]);
 				key2 = bc.put(new byte[10]);
