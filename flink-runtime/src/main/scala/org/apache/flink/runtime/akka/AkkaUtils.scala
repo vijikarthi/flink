@@ -246,6 +246,14 @@ object AkkaUtils {
 
     val logLifecycleEvents = if (lifecycleEvents) "on" else "off"
 
+    val securityEnabled = configuration.getBoolean(ConfigConstants.SECURITY_ENABLED,
+                                                    ConfigConstants.DEFAULT_SECURITY_ENABLED)
+
+    val secureCookie = configuration.getString(ConfigConstants.SECURITY_COOKIE, null)
+
+    val requireCookie = if (securityEnabled) "on" else "off"
+
+
     val configString =
       s"""
          |akka {
@@ -301,7 +309,20 @@ object AkkaUtils {
         ""
       }
 
-    ConfigFactory.parseString(configString + hostnameConfigString)
+    val cookieConfigString = if(securityEnabled){
+      s"""
+         |akka {
+         |  remote {
+         |    require-cookie = $requireCookie
+         |    secure-cookie = "$secureCookie"
+         |  }
+         |}
+         """.stripMargin
+    }else{
+      ""
+    }
+
+    ConfigFactory.parseString(configString + hostnameConfigString + cookieConfigString)
   }
 
   def getLogLevel: String = {

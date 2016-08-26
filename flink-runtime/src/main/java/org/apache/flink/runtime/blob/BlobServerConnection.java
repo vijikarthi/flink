@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.blob;
 
 import com.google.common.io.Files;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.util.InstantiationUtil;
 import org.slf4j.Logger;
@@ -45,6 +46,7 @@ import static org.apache.flink.runtime.blob.BlobServerProtocol.NAME_ADDRESSABLE;
 import static org.apache.flink.runtime.blob.BlobServerProtocol.PUT_OPERATION;
 import static org.apache.flink.runtime.blob.BlobServerProtocol.RETURN_ERROR;
 import static org.apache.flink.runtime.blob.BlobServerProtocol.RETURN_OKAY;
+import static org.apache.flink.runtime.blob.BlobServerProtocol.MAX_LENGTH_SECURE_COOKIE;
 import static org.apache.flink.runtime.blob.BlobUtils.closeSilently;
 import static org.apache.flink.runtime.blob.BlobUtils.readFully;
 import static org.apache.flink.runtime.blob.BlobUtils.readLength;
@@ -101,6 +103,19 @@ class BlobServerConnection extends Thread {
 			final byte[] buffer = new byte[BUFFER_SIZE];
 
 			while (true) {
+
+				int keyLength = 0;
+
+				try {
+					keyLength = readLength(inputStream);
+				} catch(EOFException e) {
+					//might have received incomplete length
+					LOG.warn("received incomplete length received");
+					return;
+				}
+
+				validateSecureCookie(inputStream, keyLength);
+
 				// Read the requested operation
 				final int operation = inputStream.read();
 				if (operation < 0) {
@@ -171,11 +186,13 @@ class BlobServerConnection extends Thread {
 
 		File blobFile;
 		try {
+
 			final int contentAddressable = inputStream.read();
 
 			if (contentAddressable < 0) {
 				throw new EOFException("Premature end of GET request");
 			}
+
 			if (contentAddressable == NAME_ADDRESSABLE) {
 				// Receive the job ID and key
 				byte[] jidBytes = new byte[JobID.SIZE];
@@ -270,6 +287,7 @@ class BlobServerConnection extends Thread {
 		FileOutputStream fos = null;
 
 		try {
+
 			final int contentAddressable = inputStream.read();
 			if (contentAddressable < 0) {
 				throw new EOFException("Premature end of PUT request");
@@ -382,6 +400,7 @@ class BlobServerConnection extends Thread {
 	private void delete(InputStream inputStream, OutputStream outputStream, byte[] buf) throws IOException {
 
 		try {
+
 			int type = inputStream.read();
 			if (type < 0) {
 				throw new EOFException("Premature end of DELETE request");
@@ -461,6 +480,39 @@ class BlobServerConnection extends Thread {
 
 		readFully(inputStream, buf, 0, keyLength, "BlobKey");
 		return new String(buf, 0, keyLength, BlobUtils.DEFAULT_CHARSET);
+	}
+
+
+	/**
+	 * Reads secure cookie from the given input stream.
+	 *
+	 * @param inputStream
+	 *        the input stream to read the secure cookie from
+	 * @param keyLength
+	 *        buffer length to read
+	 * @return
+	 * @throws IOException
+	 *         thrown if an I/O error occurs while reading the secure cookie data from the input stream
+	 */
+
+	private void validateSecureCookie(InputStream inputStream, int keyLength) throws IOException {
+
+		if (keyLength > MAX_LENGTH_SECURE_COOKIE) {
+			throw new IOException("Unexpected secure cookie length " + keyLength);
+		}
+
+		final byte[] buffer = new byte[BUFFER_SIZE];
+
+		readFully(inputStream, buffer, 0, keyLength, "SecureCookie");
+
+		final String cookie = new String(buffer, 0, keyLength, BlobUtils.DEFAULT_CHARSET);
+
+		if(blobServer.isSecurityEnabled()) {
+			if(StringUtils.isBlank(cookie) || !cookie.equals(blobServer.getSecureCookie())) {
+				LOG.error("Missing valid secure cookie");
+				throw new IOException("Missing valid secure cookie");
+			}
+		}
 	}
 
 	/**

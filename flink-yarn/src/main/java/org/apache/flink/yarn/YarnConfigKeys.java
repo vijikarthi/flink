@@ -43,6 +43,7 @@ public class YarnConfigKeys {
 
 	public static final String ENV_ZOOKEEPER_NAMESPACE = "_ZOOKEEPER_NAMESPACE";
 
+	public static final String ENV_SECURE_AUTH_COOKIE = "_SECURE_AUTH_COOKIE";
 
 	// ------------------------------------------------------------------------
 

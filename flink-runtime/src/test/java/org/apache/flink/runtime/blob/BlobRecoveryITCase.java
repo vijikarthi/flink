@@ -77,7 +77,8 @@ public class BlobRecoveryITCase {
 				serverAddress[i] = new InetSocketAddress("localhost", server[i].getPort());
 			}
 
-			client = new BlobClient(serverAddress[0]);
+			String secureCookie = config.getString(ConfigConstants.SECURITY_COOKIE, null);
+			client = new BlobClient(serverAddress[0], secureCookie);
 
 			// Random data
 			byte[] expected = new byte[1024];
@@ -97,7 +98,7 @@ public class BlobRecoveryITCase {
 
 			// Close the client and connect to the other server
 			client.close();
-			client = new BlobClient(serverAddress[1]);
+			client = new BlobClient(serverAddress[1], secureCookie);
 
 			// Verify request 1
 			try (InputStream is = client.get(keys[0])) {

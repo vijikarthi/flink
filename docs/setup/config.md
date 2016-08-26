@@ -107,6 +107,21 @@ Please make sure to set the maximum ticket life span high long running jobs. The
 
 If you are on YARN, then it is sufficient to authenticate the client with Kerberos. On a Flink standalone cluster you need to ensure that, initially, all nodes are authenticated with Kerberos using the `kinit` tool.
 
+### Secure Cookie Authentication
+
+Flink supports hardening below cluster components through secure cookie implementation.
+- Akka endpoints
+- Blob Server/Client communication
+- Web runtime communication
+
+Secure cookie authentication can be enabled by providing below configurations to Flink configuration file.
+
+- `security.enabled`: A boolean value (true|false) indicating security is enabled or not.
+- `security.cookie` : Secure cookie value to be used for authentication. For standalone deployment mode, the secure cookie value is mandatory when security is enabled but for the Yarn mode it is optional (auto-generated if not provided).
+
+Alternatively, secure cookie value can be provided through Flink/Yarn CLI using "-k" or "--cookie" parameter option.
+
+The web runtime module prompts for secure cookie using standard basic HTTP authentication mechanism, where the user id field is noop and the password field will be used to capture the secure cookie.
 
 ### Other
 

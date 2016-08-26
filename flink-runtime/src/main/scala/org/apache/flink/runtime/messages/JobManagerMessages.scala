@@ -231,6 +231,13 @@ object JobManagerMessages {
    */
   case object RequestBlobManagerPort
 
+  /**
+    * Requests the secure cookie of the blob manager from the job manager.
+    * The result is sent back to the sender as an [[String]].
+    */
+  case object RequestBlobManagerSecureCookie
+
+
   /** Requests the current leader session ID of the job manager. The result is sent back to the
     * sender as an [[ResponseLeaderSessionID]]
     */
@@ -523,6 +530,10 @@ object JobManagerMessages {
 
   def getRequestBlobManagerPort : AnyRef = {
     RequestBlobManagerPort
+  }
+
+  def getRequestBlobManagerSecureCookie : AnyRef = {
+    RequestBlobManagerSecureCookie
   }
 
   def getRequestRunningJobs : AnyRef = {

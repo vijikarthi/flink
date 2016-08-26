@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.webmonitor.handlers;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.instance.ActorGateway;
 
@@ -40,12 +41,22 @@ public class JobManagerConfigHandler implements RequestHandler {
 	public String handleRequest(Map<String, String> pathParams, Map<String, String> queryParams, ActorGateway jobManager) throws Exception {
 		StringWriter writer = new StringWriter();
 		JsonGenerator gen = JsonFactory.jacksonFactory.createGenerator(writer);
-
 		gen.writeStartArray();
+
 		for (String key : config.keySet()) {
 			gen.writeStartObject();
 			gen.writeStringField("key", key);
-			gen.writeStringField("value", config.getString(key, null));
+			if(key.equals(ConfigConstants.SECURITY_COOKIE)) {
+				String value = config.getString(key, null);
+				if(value != null) {
+					value = "******";
+				}
+				gen.writeStringField("value", value);
+			}
+			else {
+				gen.writeStringField("value", config.getString(key, null));
+			}
+
 			gen.writeEndObject();
 		}
 		gen.writeEndArray();

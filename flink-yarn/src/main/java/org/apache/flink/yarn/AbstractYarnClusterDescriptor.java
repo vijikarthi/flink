@@ -18,11 +18,13 @@
 
 package org.apache.flink.yarn;
 
+import org.apache.commons.net.util.Base64;
 import org.apache.flink.client.CliFrontend;
 import org.apache.flink.client.deployment.ClusterDescriptor;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.GlobalConfiguration;
 import org.apache.flink.runtime.akka.AkkaUtils;
+import org.apache.flink.yarn.cli.FlinkYarnSessionCli;
 import org.apache.flink.runtime.jobmanager.HighAvailabilityMode;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -60,6 +62,7 @@ import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.PrivilegedExceptionAction;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -70,6 +73,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.flink.configuration.ConfigConstants.DEFAULT_SECURITY_ENABLED;
 import static org.apache.flink.configuration.ConfigConstants.ENV_FLINK_LIB_DIR;
 import static org.apache.flink.yarn.cli.FlinkYarnSessionCli.CONFIG_FILE_LOG4J_NAME;
 import static org.apache.flink.yarn.cli.FlinkYarnSessionCli.CONFIG_FILE_LOGBACK_NAME;
@@ -332,6 +336,15 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 
 			flinkConfiguration.setString(ConfigConstants.JOB_MANAGER_IPC_ADDRESS_KEY, appReport.getHost());
 			flinkConfiguration.setInteger(ConfigConstants.JOB_MANAGER_IPC_PORT_KEY, appReport.getRpcPort());
+
+			//get secure cookie
+			boolean securityEnabled = flinkConfiguration.getBoolean(ConfigConstants.SECURITY_ENABLED,
+																		DEFAULT_SECURITY_ENABLED);
+			String secureCookie = flinkConfiguration.getString(ConfigConstants.SECURITY_COOKIE, null);
+			if(applicationID != null && securityEnabled && secureCookie == null) {
+				secureCookie = FlinkYarnSessionCli.getAppSecureCookie(applicationID);
+				flinkConfiguration.setString(ConfigConstants.SECURITY_COOKIE, secureCookie);
+			}
 
 			return createYarnClusterClient(this, yarnClient, appReport, flinkConfiguration, sessionFilesDir, false);
 		} catch (Exception e) {
@@ -653,6 +666,24 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 
 		if(dynamicPropertiesEncoded != null) {
 			appMasterEnv.put(YarnConfigKeys.ENV_DYNAMIC_PROPERTIES, dynamicPropertiesEncoded);
+		}
+
+		//verify if security is enabled and cookie is passed
+		boolean securityEnabled = flinkConfiguration.getBoolean(ConfigConstants.SECURITY_ENABLED, DEFAULT_SECURITY_ENABLED);
+		String secureCookie = flinkConfiguration.getString(ConfigConstants.SECURITY_COOKIE, null);
+		if(securityEnabled) {
+			if(secureCookie == null) {
+				//create cookie if not passed
+				SecureRandom rnd = new SecureRandom();
+				final byte[] secret = new byte[256];
+				rnd.nextBytes(secret);
+				secureCookie = Base64.encodeBase64URLSafeString(secret);
+			}
+		}
+		if(secureCookie != null) {
+			LOG.info("Service Auth is enabled. Adding secure cookie to container environment");
+			appMasterEnv.put(YarnConfigKeys.ENV_SECURE_AUTH_COOKIE, secureCookie);
+			flinkConfiguration.setString(ConfigConstants.SECURITY_COOKIE, secureCookie);
 		}
 
 		// set classpath from YARN configuration
