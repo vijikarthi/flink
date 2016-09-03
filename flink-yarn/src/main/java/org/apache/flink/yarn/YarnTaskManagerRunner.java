@@ -111,8 +111,9 @@ public class YarnTaskManagerRunner {
 
 			//To support Yarn Secure Integration Test Scenario
 			File krb5Conf = new File(currDir, Utils.KRB5_FILE_NAME);
-			if(krb5Conf.exists()) {
-				LOG.info("KRB5 Conf: {}", krb5Conf);
+			if(krb5Conf.exists() && krb5Conf.canRead()) {
+				LOG.info("KRB5 Conf: {}", krb5Conf.getAbsolutePath());
+				envs.put("java.security.krb5.conf", krb5Conf.getAbsolutePath());
 				System.setProperty("java.security.krb5.conf", krb5Conf.getAbsolutePath());
 				org.apache.hadoop.conf.Configuration conf = new org.apache.hadoop.conf.Configuration();
 				conf.set(CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHENTICATION, "kerberos");
