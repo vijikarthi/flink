@@ -157,9 +157,11 @@ public class YarnApplicationMasterRunner {
 			File krb5Conf = new File(currDir, Utils.KRB5_FILE_NAME);
 			if(krb5Conf.exists() && krb5Conf.canRead()) {
 				LOG.info("KRB5 Conf: {}", krb5Conf.getAbsolutePath());
+				/*
 				System.setProperty("java.security.krb5.conf", krb5Conf.getAbsolutePath());
 				System.setProperty("java.security.krb5.kdc", krb5Conf.getAbsolutePath());
 				System.setProperty("java.security.krb5.realm", "EXAMPLE.COM");
+				*/
 				org.apache.hadoop.conf.Configuration conf = new org.apache.hadoop.conf.Configuration();
 				conf.set(CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHENTICATION, "kerberos");
 				conf.set(CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHORIZATION, "true");
