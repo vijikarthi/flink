@@ -684,6 +684,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 		if(remoteYarnSiteXmlPath != null && remoteKrb5Path != null) {
 			appMasterEnv.put(YarnConfigKeys.ENV_YARN_SITE_XML_PATH, remoteYarnSiteXmlPath.toString());
 			appMasterEnv.put(YarnConfigKeys.ENV_KRB5_PATH, remoteKrb5Path.toString() );
+			appMasterEnv.put("java.security.krb5.conf", remoteKrb5Path.toString());
 		}
 
 		if(dynamicPropertiesEncoded != null) {

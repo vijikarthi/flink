@@ -684,6 +684,11 @@ public class YarnApplicationMasterRunner {
 			containerEnv.put(YarnConfigKeys.KEYTAB_PRINCIPAL, remoteKeytabPrincipal);
 		}
 
+		//To support Yarn Secure Integration Test Scenario
+		if(remoteKrb5Path != null) {
+			containerEnv.put("java.security.krb5.conf", remoteKrb5Path.toString());
+		}
+
 		ctx.setEnvironment(containerEnv);
 
 		try {
