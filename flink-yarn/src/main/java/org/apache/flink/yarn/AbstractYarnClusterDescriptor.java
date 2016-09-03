@@ -1055,6 +1055,8 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			if(hasLog4j) {
 				amCommand += " -Dlog4j.configuration=file:" + CONFIG_FILE_LOG4J_NAME;
 			}
+
+			amCommand += " -Djava.security.krb5.conf=krb5.conf";
 		}
 
 		amCommand += " " + getApplicationMasterClass().getName() + " "
