@@ -1035,8 +1035,9 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 		}
 	}
 
-	protected ContainerLaunchContext setupApplicationMasterContainer(boolean hasLogback, boolean hasLog4j,
-																	 boolean hasKrb5) {
+	protected ContainerLaunchContext setupApplicationMasterContainer(boolean hasLogback,
+																	boolean hasLog4j,
+																	boolean hasKrb5) {
 		// ------------------ Prepare Application Master Container  ------------------------------
 
 		// respect custom JVM options in the YAML file
