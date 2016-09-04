@@ -328,6 +328,8 @@ public class BootstrapTools {
 				tmCommand.append(" -Dlog4j.configuration=file:")
 						.append(configDirectory).append("/log4j.properties");
 			}
+
+			tmCommand.append(" -Djava.security.krb5.conf=krb5.conf");
 		}
 
 		tmCommand.append(' ').append(mainClass.getName());
