@@ -308,6 +308,7 @@ public class BootstrapTools {
 			String logDirectory,
 			boolean hasLogback,
 			boolean hasLog4j,
+			boolean hasKrb5,
 			Class<?> mainClass) {
 
 		StringBuilder tmCommand = new StringBuilder("$JAVA_HOME/bin/java");
@@ -329,7 +330,11 @@ public class BootstrapTools {
 						.append(configDirectory).append("/log4j.properties");
 			}
 
-			tmCommand.append(" -Djava.security.krb5.conf=krb5.conf");
+			//applicable only for YarnMiniCluster secure test run
+			//krb5.conf file will be available as local resource in JM/TM container
+			if(hasKrb5) {
+				tmCommand.append(" -Djava.security.krb5.conf=krb5.conf");
+			}
 		}
 
 		tmCommand.append(' ').append(mainClass.getName());

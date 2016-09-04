@@ -157,13 +157,7 @@ public class YarnApplicationMasterRunner {
 			File krb5Conf = new File(currDir, Utils.KRB5_FILE_NAME);
 			if(krb5Conf.exists() && krb5Conf.canRead()) {
 				String krb5Path = krb5Conf.getAbsolutePath();
-				//String krb5Path = ENV.get(YarnConfigKeys.ENV_KRB5_PATH);
 				LOG.info("KRB5 Conf: {}", krb5Path);
-				/*
-				System.setProperty("java.security.krb5.conf", krb5Path);
-				System.setProperty("java.security.krb5.kdc", krb5Path);
-				System.setProperty("java.security.krb5.realm", "EXAMPLE.COM");
-				*/
 				org.apache.hadoop.conf.Configuration conf = new org.apache.hadoop.conf.Configuration();
 				conf.set(CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHENTICATION, "kerberos");
 				conf.set(CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHORIZATION, "true");
@@ -601,6 +595,7 @@ public class YarnApplicationMasterRunner {
 		//To support Yarn Secure Integration Test Scenario
 		LocalResource yarnConfResource = null;
 		LocalResource krb5ConfResource = null;
+		boolean hasKrb5 = false;
 		if(remoteYarnConfPath != null && remoteKrb5Path != null) {
 			LOG.info("TM:Adding remoteYarnConfPath {} to the container local resource bucket", remoteYarnConfPath);
 			yarnConfResource = Records.newRecord(LocalResource.class);
@@ -611,6 +606,8 @@ public class YarnApplicationMasterRunner {
 			krb5ConfResource = Records.newRecord(LocalResource.class);
 			Path krb5ConfPath = new Path(remoteKrb5Path);
 			Utils.registerLocalResource(yarnFileSystem, krb5ConfPath, krb5ConfResource);
+
+			hasKrb5 = true;
 		}
 
 		// register Flink Jar with remote HDFS
@@ -668,7 +665,7 @@ public class YarnApplicationMasterRunner {
 
 		String launchCommand = BootstrapTools.getTaskManagerShellCommand(
 			flinkConfig, tmParams, ".", ApplicationConstants.LOG_DIR_EXPANSION_VAR,
-			hasLogback, hasLog4j, taskManagerMainClass);
+			hasLogback, hasLog4j, hasKrb5, taskManagerMainClass);
 
 		log.info("Starting TaskManagers with command: " + launchCommand);
 

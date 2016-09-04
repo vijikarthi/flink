@@ -522,8 +522,6 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 
 		addLibFolderToShipFiles(effectiveShipFiles);
 
-		final ContainerLaunchContext amContainer = setupApplicationMasterContainer(hasLogback, hasLog4j);
-
 		// Set-up ApplicationSubmissionContext for the application
 		ApplicationSubmissionContext appContext = yarnApplication.getApplicationSubmissionContext();
 
@@ -613,6 +611,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 		//applications (JM/TMs) to have proper secure cluster setup
 		Path remoteKrb5Path = null;
 		Path remoteYarnSiteXmlPath = null;
+		boolean hasKrb5 = false;
 		if(System.getenv("IN_TESTS") != null) {
 			String krb5Config = System.getProperty("java.security.krb5.conf");
 			if(krb5Config != null && krb5Config.length() != 0) {
@@ -629,6 +628,8 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 				Path yarnSitePath = new Path(f.getAbsolutePath());
 				remoteYarnSiteXmlPath = Utils.setupLocalResource(fs, appId.toString(), yarnSitePath, yarnConfResource, fs.getHomeDirectory());
 				localResources.put(Utils.YARN_SITE_FILE_NAME, yarnConfResource);
+
+				hasKrb5 = true;
 			}
 		}
 
@@ -643,6 +644,8 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			remotePathKeytab = Utils.setupLocalResource(fs, appId.toString(), keytabPath, keytabResource, fs.getHomeDirectory());
 			localResources.put(Utils.KEYTAB_FILE_NAME, keytabResource);
 		}
+
+		final ContainerLaunchContext amContainer = setupApplicationMasterContainer(hasLogback, hasLog4j, hasKrb5);
 
 		if ( UserGroupInformation.isSecurityEnabled() && keytab == null ) {
 			//set tokens only when keytab is not provided
@@ -1032,7 +1035,8 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 		}
 	}
 
-	protected ContainerLaunchContext setupApplicationMasterContainer(boolean hasLogback, boolean hasLog4j) {
+	protected ContainerLaunchContext setupApplicationMasterContainer(boolean hasLogback, boolean hasLog4j,
+																	 boolean hasKrb5) {
 		// ------------------ Prepare Application Master Container  ------------------------------
 
 		// respect custom JVM options in the YAML file
@@ -1055,7 +1059,11 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			if(hasLog4j) {
 				amCommand += " -Dlog4j.configuration=file:" + CONFIG_FILE_LOG4J_NAME;
 			}
+		}
 
+		//applicable only for YarnMiniCluster secure test run
+		//krb5.conf file will be available as local resource in JM/TM container
+		if(hasKrb5) {
 			amCommand += " -Djava.security.krb5.conf=krb5.conf";
 		}
 
