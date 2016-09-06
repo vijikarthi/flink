@@ -21,6 +21,7 @@ package org.apache.flink.runtime.blob;
 import org.apache.commons.io.FileUtils;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.IllegalConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +34,8 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URL;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.apache.flink.configuration.ConfigConstants.DEFAULT_SECURITY_ENABLED;
 
 /**
  * The BLOB cache implements a local cache for content-addressable BLOBs. When requesting BLOBs through the
@@ -56,6 +59,9 @@ public final class BlobCache implements BlobService {
 	/** The number of retries when the transfer fails */
 	private final int numFetchRetries;
 
+	/** Secure cookie for service level authorization **/
+	private String secureCookie;
+
 
 	public BlobCache(InetSocketAddress serverAddress, Configuration configuration) {
 		if (serverAddress == null || configuration == null) {
@@ -63,6 +69,16 @@ public final class BlobCache implements BlobService {
 		}
 
 		this.serverAddress = serverAddress;
+
+		if(configuration.getBoolean(ConfigConstants.SECURITY_ENABLED, DEFAULT_SECURITY_ENABLED) == true) {
+			secureCookie = configuration.getString(ConfigConstants.SECURITY_COOKIE, null);
+			if(secureCookie == null) {
+				String errorMessage = "Missing " + ConfigConstants.SECURITY_COOKIE
+						+ " configuration in Flink config file";
+				LOG.error(errorMessage);
+				throw new IllegalConfigurationException(errorMessage);
+			}
+		}
 
 		// configure and create the storage directory
 		String storageDirectory = configuration.getString(ConfigConstants.BLOB_STORAGE_DIRECTORY_KEY, null);
@@ -121,7 +137,7 @@ public final class BlobCache implements BlobService {
 					OutputStream os = null;
 
 					try {
-						bc = new BlobClient(serverAddress);
+						bc = new BlobClient(serverAddress, secureCookie);
 						is = bc.get(requiredBlob);
 						os = new FileOutputStream(localJarFile);
 
@@ -245,7 +261,7 @@ public final class BlobCache implements BlobService {
 
 	@Override
 	public BlobClient createClient() throws IOException {
-		return new BlobClient(serverAddress);
+		return new BlobClient(serverAddress, secureCookie);
 	}
 
 	public File getStorageDir() {
@@ -267,4 +283,8 @@ public final class BlobCache implements BlobService {
 			}
 		}
 	}
+
+	/* Secure cookie to authenticate */
+	@Override
+	public String getSecureCookie() { return secureCookie; }
 }

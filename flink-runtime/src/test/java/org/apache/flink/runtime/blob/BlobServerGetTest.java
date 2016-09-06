@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.blob;
 
+import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.junit.Test;
 
@@ -49,7 +50,7 @@ public class BlobServerGetTest {
 			server = new BlobServer(config);
 
 			InetSocketAddress serverAddress = new InetSocketAddress("localhost", server.getPort());
-			client = new BlobClient(serverAddress);
+			client = new BlobClient(serverAddress, config.getString(ConfigConstants.SECURITY_COOKIE, null));
 
 			byte[] data = new byte[2000000];
 			rnd.nextBytes(data);
@@ -99,7 +100,7 @@ public class BlobServerGetTest {
 			server = new BlobServer(config);
 
 			InetSocketAddress serverAddress = new InetSocketAddress("localhost", server.getPort());
-			client = new BlobClient(serverAddress);
+			client = new BlobClient(serverAddress, config.getString(ConfigConstants.SECURITY_COOKIE, null));
 
 			byte[] data = new byte[5000000];
 			rnd.nextBytes(data);

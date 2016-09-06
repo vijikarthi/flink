@@ -145,6 +145,7 @@ jobmanager.web.port: 8081
 # high-availability.zookeeper.storageDir: hdfs:///flink/ha/
 
 #==============================================================================
+
 # Flink Cluster Security Configuration (optional configuration)
 #==============================================================================
 
@@ -154,3 +155,13 @@ jobmanager.web.port: 8081
 
 #security.keytab: /path/to/kerberos/keytab
 #security.principal: flink-user
+
+# Service Authorization Configuration (optional configuration)
+#==============================================================================
+
+# Flag to enable/disable service level authorization (disabled by default)
+#security.enabled: false
+
+#secure random cookie to be used (auto-generated or static if value supplied)
+#security.cookie: foo
+

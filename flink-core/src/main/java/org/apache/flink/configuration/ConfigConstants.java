@@ -810,6 +810,19 @@ public final class ConfigConstants {
 	@Deprecated
 	public static final String ZOOKEEPER_MAX_RETRY_ATTEMPTS = "recovery.zookeeper.client.max-retry-attempts";
 
+	// ---------------------------- Secure Cookie Authentication -----------------------------------
+
+	/** Flag that specify whether service authentication is enabled or not **/
+	public static final String SECURITY_ENABLED = "security.enabled";
+
+	/** By default, secure cookie authentication is disabled **/
+	public static final boolean DEFAULT_SECURITY_ENABLED = false;
+
+	/** cookie to be used for authentication **/
+	public static final String SECURITY_COOKIE = "security.cookie";
+
+
+
 	// ---------------------------- Metrics -----------------------------------
 
 	/**

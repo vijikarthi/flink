@@ -24,15 +24,20 @@ import org.apache.flink.client.deployment.StandaloneClusterDescriptor;
 import org.apache.flink.client.program.StandaloneClusterClient;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 
 import static org.apache.flink.client.CliFrontend.setJobManagerAddressInConfig;
+import static org.apache.flink.configuration.ConfigConstants.DEFAULT_SECURITY_ENABLED;
 
 /**
  * The default CLI which is used for interaction with standalone clusters.
  */
 public class DefaultCLI implements CustomCommandLine<StandaloneClusterClient> {
+
+	private static final Logger LOG = LoggerFactory.getLogger(DefaultCLI.class);
 
 	@Override
 	public boolean isActive(CommandLine commandLine, Configuration configuration) {
@@ -56,6 +61,12 @@ public class DefaultCLI implements CustomCommandLine<StandaloneClusterClient> {
 	@Override
 	public StandaloneClusterClient retrieveCluster(CommandLine commandLine, Configuration config) {
 
+		// get secure cookie if passed as argument
+		String secureCookieArg = commandLine.hasOption(CliFrontendParser.SECURE_COOKIE_OPTION.getOpt()) ?
+				commandLine.getOptionValue(CliFrontendParser.SECURE_COOKIE_OPTION.getOpt()) : null;
+
+		populateSecureCookieConfigurations(config, secureCookieArg);
+
 		if (commandLine.hasOption(CliFrontendParser.ADDRESS_OPTION.getOpt())) {
 			String addressWithPort = commandLine.getOptionValue(CliFrontendParser.ADDRESS_OPTION.getOpt());
 			InetSocketAddress jobManagerAddress = ClientUtils.parseHostPortAddress(addressWithPort);
@@ -77,7 +88,30 @@ public class DefaultCLI implements CustomCommandLine<StandaloneClusterClient> {
 			CommandLine commandLine,
 			Configuration config) throws UnsupportedOperationException {
 
+		// get secure cookie if passed as argument
+		String secureCookieArg = commandLine.hasOption(CliFrontendParser.SECURE_COOKIE_OPTION.getOpt()) ?
+				commandLine.getOptionValue(CliFrontendParser.SECURE_COOKIE_OPTION.getOpt()) : null;
+
+		populateSecureCookieConfigurations(config, secureCookieArg);
+
 		StandaloneClusterDescriptor descriptor = new StandaloneClusterDescriptor(config);
 		return descriptor.deploy();
+	}
+
+	private void populateSecureCookieConfigurations(Configuration config, String secureCookieArg) {
+
+		boolean securityEnabled = config.getBoolean(ConfigConstants.SECURITY_ENABLED, DEFAULT_SECURITY_ENABLED);
+
+		if(securityEnabled) {
+			LOG.debug("Security enabled");
+		} else {
+			LOG.debug("Security disabled");
+		}
+
+		if(securityEnabled && secureCookieArg != null) {
+			LOG.debug("Secure cookie is provided as CLI argument and will be used");
+			config.setString(ConfigConstants.SECURITY_COOKIE, secureCookieArg);
+		}
+
 	}
 }

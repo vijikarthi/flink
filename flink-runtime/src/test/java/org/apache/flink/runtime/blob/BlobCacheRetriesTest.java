@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.blob;
 
+import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.junit.Test;
 
@@ -54,7 +55,7 @@ public class BlobCacheRetriesTest {
 			BlobClient blobClient = null;
 			BlobKey key;
 			try {
-				blobClient = new BlobClient(serverAddress);
+				blobClient = new BlobClient(serverAddress, config.getString(ConfigConstants.SECURITY_COOKIE, null));
 
 				key = blobClient.put(data);
 			}
@@ -113,7 +114,7 @@ public class BlobCacheRetriesTest {
 			BlobClient blobClient = null;
 			BlobKey key;
 			try {
-				blobClient = new BlobClient(serverAddress);
+				blobClient = new BlobClient(serverAddress, config.getString(ConfigConstants.SECURITY_COOKIE, null));
 
 				key = blobClient.put(data);
 			}

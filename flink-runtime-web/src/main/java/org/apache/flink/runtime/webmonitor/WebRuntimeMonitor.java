@@ -134,7 +134,7 @@ public class WebRuntimeMonitor implements WebMonitor {
 	private ExecutorService executorService;
 
 	public WebRuntimeMonitor(
-			Configuration config,
+			final Configuration config,
 			LeaderRetrievalService leaderRetrievalService,
 			ActorSystem actorSystem) throws IOException, InterruptedException {
 
@@ -323,7 +323,7 @@ public class WebRuntimeMonitor implements WebMonitor {
 
 				ch.pipeline()
 						.addLast(new HttpServerCodec())
-						.addLast(new HttpRequestHandler(uploadDir))
+						.addLast(new HttpRequestHandler(config,uploadDir))
 						.addLast(handler.name(), handler)
 						.addLast(new PipelineErrorHandler(LOG));
 			}

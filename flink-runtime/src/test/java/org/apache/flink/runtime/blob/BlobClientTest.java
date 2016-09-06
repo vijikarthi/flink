@@ -32,6 +32,7 @@ import java.security.MessageDigest;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.core.fs.Path;
@@ -48,7 +49,10 @@ public class BlobClientTest {
 	private static final int TEST_BUFFER_SIZE = 17 * 1000;
 
 	/** The instance of the BLOB server used during the tests. */
-	private static BlobServer BLOB_SERVER;
+	protected static BlobServer BLOB_SERVER;
+
+	/** Flink configuration */
+	protected static Configuration config = new Configuration();
 
 	/**
 	 * Starts the BLOB server.
@@ -56,7 +60,7 @@ public class BlobClientTest {
 	@BeforeClass
 	public static void startServer() {
 		try {
-			BLOB_SERVER = new BlobServer(new Configuration());
+			BLOB_SERVER = new BlobServer(config);
 		}
 		catch (IOException e) {
 			e.printStackTrace();
@@ -79,7 +83,7 @@ public class BlobClientTest {
 	 * 
 	 * @return a test buffer filled with a specific byte pattern
 	 */
-	private static byte[] createTestBuffer() {
+	protected static byte[] createTestBuffer() {
 		final byte[] buf = new byte[TEST_BUFFER_SIZE];
 		for (int i = 0; i < buf.length; ++i) {
 			buf[i] = (byte) (i % 128);
@@ -207,7 +211,7 @@ public class BlobClientTest {
 			BlobKey origKey = new BlobKey(md.digest());
 
 			InetSocketAddress serverAddress = new InetSocketAddress("localhost", BLOB_SERVER.getPort());
-			client = new BlobClient(serverAddress);
+			client = new BlobClient(serverAddress, config.getString(ConfigConstants.SECURITY_COOKIE, null));
 
 			// Store the data
 			BlobKey receivedKey = client.put(testBuffer);
@@ -255,7 +259,7 @@ public class BlobClientTest {
 			BlobKey origKey = prepareTestFile(testFile);
 
 			InetSocketAddress serverAddress = new InetSocketAddress("localhost", BLOB_SERVER.getPort());
-			client = new BlobClient(serverAddress);
+			client = new BlobClient(serverAddress, config.getString(ConfigConstants.SECURITY_COOKIE, null));
 
 			// Store the data
 			is = new FileInputStream(testFile);
@@ -301,7 +305,7 @@ public class BlobClientTest {
 			BlobClient client = null;
 			try {
 				final InetSocketAddress serverAddress = new InetSocketAddress("localhost", BLOB_SERVER.getPort());
-				client = new BlobClient(serverAddress);
+				client = new BlobClient(serverAddress, config.getString(ConfigConstants.SECURITY_COOKIE, null));
 
 				// Store the data
 				client.put(jobID, key, testBuffer);
@@ -353,7 +357,7 @@ public class BlobClientTest {
 			try {
 
 				final InetSocketAddress serverAddress = new InetSocketAddress("localhost", BLOB_SERVER.getPort());
-				client = new BlobClient(serverAddress);
+				client = new BlobClient(serverAddress, config.getString(ConfigConstants.SECURITY_COOKIE, null));
 
 				// Store the data
 				is = new FileInputStream(testFile);
@@ -384,7 +388,7 @@ public class BlobClientTest {
 	}
 
 	/**
-	 * Tests the static {@link BlobClient#uploadJarFiles(InetSocketAddress, List)} helper.
+	 * Tests the static {@link BlobClient#uploadJarFiles(InetSocketAddress, List, String)} helper.
 	 */
 	@Test
 	public void testUploadJarFilesHelper() throws Exception {
@@ -394,11 +398,14 @@ public class BlobClientTest {
 
 		InetSocketAddress serverAddress = new InetSocketAddress("localhost", BLOB_SERVER.getPort());
 
-		List<BlobKey> blobKeys = BlobClient.uploadJarFiles(serverAddress, Collections.singletonList(new Path(testFile.toURI())));
+		String secureCookie = config.getString(ConfigConstants.SECURITY_COOKIE, null);
+
+		List<BlobKey> blobKeys = BlobClient.uploadJarFiles(serverAddress,
+				Collections.singletonList(new Path(testFile.toURI())), secureCookie);
 
 		assertEquals(1, blobKeys.size());
 
-		try (BlobClient blobClient = new BlobClient(serverAddress)) {
+		try (BlobClient blobClient = new BlobClient(serverAddress, secureCookie)) {
 			InputStream is = blobClient.get(blobKeys.get(0));
 			validateGet(is, testFile);
 		}
