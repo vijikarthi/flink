@@ -758,6 +758,15 @@ public final class ConfigConstants {
 	@PublicEvolving
 	public static final String HA_ZOOKEEPER_MAX_RETRY_ATTEMPTS = "high-availability.zookeeper.client.max-retry-attempts";
 
+	/** Flag that indicates if SASL client authentication needs to be disabled or not */
+	public static final String ZOOKEEPER_SASL_DISABLE = "zookeeper.sasl.disable";
+
+	/** ACL options supported "creator" or "open" */
+	public static final String HA_ZOOKEEPER_CLIENT_ACL = "high-availability.zookeeper.client.acl";
+
+	/** Zookeeper SASL service name */
+	public static final String ZOOKEEPER_SASL_SERVICE_NAME = "zookeeper.sasl.service-name";
+
 	/** Deprecated in favour of {@link #HA_ZOOKEEPER_QUORUM_KEY}. */
 	@Deprecated
 	public static final String ZOOKEEPER_QUORUM_KEY = "recovery.zookeeper.quorum";
@@ -1245,6 +1254,12 @@ public final class ConfigConstants {
 
 	/** ZooKeeper default leader port. */
 	public static final int DEFAULT_ZOOKEEPER_LEADER_PORT = 3888;
+
+	// - Defaults for ZK client security
+	public static final boolean DEFAULT_ZOOKEEPER_SASL_DISABLE = true;
+
+	/** ACL options supported "creator" or "open" */
+	public static final String DEFAULT_HA_ZOOKEEPER_CLIENT_ACL = "open";
 
 	// ------------------------- Queryable state ------------------------------
 
