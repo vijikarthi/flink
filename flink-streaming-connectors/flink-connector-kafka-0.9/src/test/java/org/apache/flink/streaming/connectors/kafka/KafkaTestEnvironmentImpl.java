@@ -66,6 +66,8 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 	private Properties standardProps;
 	private Properties additionalServerProperties;
 	private boolean secureMode = false;
+	// 6 seconds is default. Seems to be too small for travis.
+	private String zkTimeout = "30000";
 
 	public String getBrokerConnectionString() {
 		return brokerConnectionString;
@@ -138,6 +140,12 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 
 	@Override
 	public void prepare(int numKafkaServers, Properties additionalServerProperties, boolean secureMode) {
+
+		//increase the timeout since in Travis it is failing.
+		if(secureMode) {
+			zkTimeout = "90000";
+		}
+
 		this.additionalServerProperties = additionalServerProperties;
 		this.secureMode = secureMode;
 		File tempDir = new File(System.getProperty("java.io.tmpdir"));
@@ -162,6 +170,7 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 			LOG.info("Starting Zookeeper");
 			zookeeper = new TestingServer(-1, tmpZkDir);
 			zookeeperConnectionString = zookeeper.getConnectString();
+			LOG.info("zookeeperConnectionString: {}", zookeeperConnectionString);
 
 			LOG.info("Starting KafkaServer");
 			brokers = new ArrayList<>(numKafkaServers);
@@ -184,13 +193,15 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 			fail("Test setup failed: " + t.getMessage());
 		}
 
+		LOG.info("brokerConnectionString --> {}", brokerConnectionString);
+
 		standardProps = new Properties();
 		standardProps.setProperty("zookeeper.connect", zookeeperConnectionString);
 		standardProps.setProperty("bootstrap.servers", brokerConnectionString);
 		standardProps.setProperty("group.id", "flink-tests");
 		standardProps.setProperty("auto.commit.enable", "false");
-		standardProps.setProperty("zookeeper.session.timeout.ms", "30000"); // 6 seconds is default. Seems to be too small for travis.
-		standardProps.setProperty("zookeeper.connection.timeout.ms", "30000");
+		standardProps.setProperty("zookeeper.session.timeout.ms", zkTimeout);
+		standardProps.setProperty("zookeeper.connection.timeout.ms", zkTimeout);
 		standardProps.setProperty("auto.offset.reset", "earliest"); // read from the beginning. (earliest is kafka 0.9 value)
 		standardProps.setProperty("fetch.message.max.bytes", "256"); // make a lot of fetches (MESSAGES MUST BE SMALLER!)
 
@@ -208,6 +219,7 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 		if (zookeeper != null) {
 			try {
 				zookeeper.stop();
+				zookeeper.close();
 			}
 			catch (Exception e) {
 				LOG.warn("ZK.stop() failed", e);
@@ -236,6 +248,7 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 	}
 
 	public ZkUtils getZkUtils() {
+		LOG.info("In getZKUtils:: zookeeperConnectionString = {}", zookeeperConnectionString);
 		ZkClient creator = new ZkClient(zookeeperConnectionString, Integer.valueOf(standardProps.getProperty("zookeeper.session.timeout.ms")),
 				Integer.valueOf(standardProps.getProperty("zookeeper.connection.timeout.ms")), new ZooKeeperStringSerializer());
 		return ZkUtils.apply(creator, false);
@@ -308,8 +321,8 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 		kafkaProperties.put("replica.fetch.max.bytes", String.valueOf(50 * 1024 * 1024));
 
 		// for CI stability, increase zookeeper session timeout
-		kafkaProperties.put("zookeeper.session.timeout.ms", "30000");
-		kafkaProperties.put("zookeeper.connection.timeout.ms", "30000");
+		kafkaProperties.put("zookeeper.session.timeout.ms", zkTimeout);
+		kafkaProperties.put("zookeeper.connection.timeout.ms", zkTimeout);
 		if(additionalServerProperties != null) {
 			kafkaProperties.putAll(additionalServerProperties);
 		}
@@ -355,7 +368,7 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 		if(secureMode) {
 			prop.put("security.inter.broker.protocol", "SASL_PLAINTEXT");
 			prop.put("security.protocol", "SASL_PLAINTEXT");
-			prop.put("sasl.kerberos.service.name", "client");
+			prop.put("sasl.kerberos.service.name", "kafka");
 		}
 		return prop;
 	}

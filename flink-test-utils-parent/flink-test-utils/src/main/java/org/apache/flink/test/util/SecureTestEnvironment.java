@@ -49,6 +49,10 @@ public class SecureTestEnvironment {
 
 	private static String testZkServerPrincipal = null;
 
+	private static String testZkClientPrincipal = null;
+
+	private static String testKafkaServerPrincipal = null;
+
 	private static String hadoopServicePrincipal = null;
 
 	private static File baseDirForSecureRun = null;
@@ -59,7 +63,10 @@ public class SecureTestEnvironment {
 			baseDirForSecureRun = tempFolder.newFolder();
 			LOG.info("Base Directory for Secure Environment: {}", baseDirForSecureRun);
 
+			String hostName = "localhost";
 			Properties kdcConf = MiniKdc.createConf();
+			kdcConf.setProperty(MiniKdc.DEBUG,"true");
+			kdcConf.setProperty(MiniKdc.KDC_BIND_ADDRESS, hostName);
 			kdc = new MiniKdc(kdcConf, baseDirForSecureRun);
 			kdc.start();
 			LOG.info("Started Mini KDC");
@@ -67,18 +74,27 @@ public class SecureTestEnvironment {
 			File keytabFile = new File(baseDirForSecureRun, "test-users.keytab");
 			testKeytab = keytabFile.getAbsolutePath();
 			testZkServerPrincipal = "zookeeper/127.0.0.1";
-			hadoopServicePrincipal = "hadoop/localhost";
-			testPrincipal = "client/localhost";
+			testZkClientPrincipal = "zk-client/127.0.0.1";
+			testKafkaServerPrincipal = "kafka/" + hostName;
+			hadoopServicePrincipal = "hadoop/" + hostName;
+			testPrincipal = "client/" + hostName;
 
-			kdc.createPrincipal(keytabFile, testPrincipal, testZkServerPrincipal, hadoopServicePrincipal);
+			kdc.createPrincipal(keytabFile, testPrincipal, testZkServerPrincipal,
+					hadoopServicePrincipal,
+					testZkClientPrincipal,
+					testKafkaServerPrincipal);
 
 			testPrincipal = testPrincipal + "@" + kdc.getRealm();
 			testZkServerPrincipal = testZkServerPrincipal + "@" + kdc.getRealm();
+			testZkClientPrincipal = testZkClientPrincipal + "@" + kdc.getRealm();
+			testKafkaServerPrincipal = testKafkaServerPrincipal + "@" + kdc.getRealm();
 			hadoopServicePrincipal = hadoopServicePrincipal + "@" + kdc.getRealm();
 
 			LOG.info("-------------------------------------------------------------------");
 			LOG.info("Test Principal: {}", testPrincipal);
 			LOG.info("Test ZK Server Principal: {}", testZkServerPrincipal);
+			LOG.info("Test ZK Client Principal: {}", testZkClientPrincipal);
+			LOG.info("Test Kafka Server Principal: {}", testKafkaServerPrincipal);
 			LOG.info("Test Hadoop Service Principal: {}", hadoopServicePrincipal);
 			LOG.info("Test Keytab: {}", testKeytab);
 			LOG.info("-------------------------------------------------------------------");
@@ -170,6 +186,20 @@ public class SecureTestEnvironment {
 					new TestingSecurityContext.ClientSecurityConfiguration(testZkServerPrincipal, testKeytab,
 							"Server", "zk-server");
 			clientSecurityConfigurationMap.put("Server",zkServer);
+		}
+
+		if(testZkClientPrincipal != null ) {
+			TestingSecurityContext.ClientSecurityConfiguration zkClient =
+					new TestingSecurityContext.ClientSecurityConfiguration(testZkClientPrincipal, testKeytab,
+							"Client", "zk-client");
+			clientSecurityConfigurationMap.put("Client",zkClient);
+		}
+
+		if(testKafkaServerPrincipal != null ) {
+			TestingSecurityContext.ClientSecurityConfiguration kafkaServer =
+					new TestingSecurityContext.ClientSecurityConfiguration(testKafkaServerPrincipal, testKeytab,
+							"KafkaServer", "kafka-server");
+			clientSecurityConfigurationMap.put("KafkaServer",kafkaServer);
 		}
 
 		return clientSecurityConfigurationMap;

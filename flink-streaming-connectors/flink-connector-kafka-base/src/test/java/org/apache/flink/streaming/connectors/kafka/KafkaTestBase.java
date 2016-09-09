@@ -158,6 +158,7 @@ public abstract class KafkaTestBase extends TestLogger {
 		}
 
 		kafkaServer.shutdown();
+
 	}
 
 
