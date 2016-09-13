@@ -143,6 +143,8 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 
 		//increase the timeout since in Travis ZK connection takes long time for secure connection.
 		if(secureMode) {
+			//run only one kafka server to avoid multiple ZK connections from many instances - Travis timeout
+			numKafkaServers = 1;
 			zkTimeout = String.valueOf(Integer.parseInt(zkTimeout) * 10);
 		}
 
