@@ -20,6 +20,7 @@ package org.apache.flink.streaming.connectors.kafka;
 import org.apache.flink.test.util.SecureTestEnvironment;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,8 +52,14 @@ public class Kafka09SecureRunITCase extends KafkaConsumerTestBase {
 		SecureTestEnvironment.cleanup();
 	}
 
+	@Ignore
 	@Test(timeout = 500000)
 	public void testMultipleTopics() throws Exception {
 		runProduceConsumeMultipleTopics();
+	}
+
+	@Test(timeout = 500000)
+	public void testOneToOneSources() throws Exception {
+		runOneToOneExactlyOnceTest();
 	}
 }
