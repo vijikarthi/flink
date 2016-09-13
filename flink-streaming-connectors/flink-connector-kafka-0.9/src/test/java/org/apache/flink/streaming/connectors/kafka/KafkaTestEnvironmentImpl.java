@@ -143,7 +143,7 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 
 		//increase the timeout since in Travis it is failing.
 		if(secureMode) {
-			zkTimeout = "500000";
+			zkTimeout = "360000";
 		}
 
 		this.additionalServerProperties = additionalServerProperties;

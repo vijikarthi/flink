@@ -51,7 +51,7 @@ public class Kafka09SecureRunITCase extends KafkaConsumerTestBase {
 		SecureTestEnvironment.cleanup();
 	}
 
-	@Test(timeout = 360000)
+	@Test(timeout = 500000)
 	public void testMultipleTopics() throws Exception {
 		runProduceConsumeMultipleTopics();
 	}
