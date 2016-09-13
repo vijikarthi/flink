@@ -65,7 +65,9 @@ public class SecureTestEnvironment {
 
 			String hostName = "localhost";
 			Properties kdcConf = MiniKdc.createConf();
-			kdcConf.setProperty(MiniKdc.DEBUG,"true");
+			if(LOG.isDebugEnabled()) {
+				kdcConf.setProperty(MiniKdc.DEBUG, "true");
+			}
 			kdcConf.setProperty(MiniKdc.KDC_BIND_ADDRESS, hostName);
 			kdc = new MiniKdc(kdcConf, baseDirForSecureRun);
 			kdc.start();
