@@ -266,23 +266,36 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 			zkUtils.close();
 		}
 
+		LOG.info("Topic {} create request is successfully posted", topic);
+
 		// validate that the topic has been created
 		final long deadline = System.currentTimeMillis() + 30000;
 		do {
 			try {
-				Thread.sleep(100);
+				if(secureMode) {
+					//wait for 10 seconds since in Travis there ZK timeout occurs frequently
+					LOG.info("waiting for 10 secs before the topic {} can be checked", topic);
+					Thread.sleep(10000);
+				} else {
+					Thread.sleep(100);
+				}
+
 			} catch (InterruptedException e) {
 				// restore interrupted state
 			}
 			// we could use AdminUtils.topicExists(zkUtils, topic) here, but it's results are
 			// not always correct.
 
+			LOG.info("Validating if the topic {} has been created or not", topic);
+
 			// create a new ZK utils connection
 			ZkUtils checkZKConn = getZkUtils();
 			if(AdminUtils.topicExists(checkZKConn, topic)) {
+				LOG.info("topic {} has been created successfully", topic);
 				checkZKConn.close();
 				return;
 			}
+			LOG.info("topic {} has not been created yet. Will check again...", topic);
 			checkZKConn.close();
 		}
 		while (System.currentTimeMillis() < deadline);
