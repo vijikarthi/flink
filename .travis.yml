@@ -30,7 +30,7 @@ matrix:
     - jdk: "openjdk7"
       env: PROFILE="-Dhadoop.version=2.4.1 -Dscala-2.11 -Pinclude-yarn-tests,flink-fast-tests-b,include-kinesis"
 
-   - jdk: "oraclejdk7"
+    - jdk: "oraclejdk7"
       env: PROFILE="-Dhadoop.version=2.3.0 -Pflink-fast-tests-a,include-kinesis"
     - jdk: "oraclejdk7"
       env: PROFILE="-Dhadoop.version=2.3.0 -Pflink-fast-tests-b,include-kinesis"
