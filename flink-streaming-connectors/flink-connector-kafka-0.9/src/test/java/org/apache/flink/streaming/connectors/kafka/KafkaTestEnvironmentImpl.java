@@ -141,7 +141,7 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 	@Override
 	public void prepare(int numKafkaServers, Properties additionalServerProperties, boolean secureMode) {
 
-		//increase the timeout since in Travis it is failing.
+		//increase the timeout since in Travis ZK connection takes long time.
 		if(secureMode) {
 			zkTimeout = "360000";
 		}
