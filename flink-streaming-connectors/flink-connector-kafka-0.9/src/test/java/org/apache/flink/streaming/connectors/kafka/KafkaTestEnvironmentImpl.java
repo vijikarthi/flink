@@ -66,7 +66,7 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 	private Properties standardProps;
 	private Properties additionalServerProperties;
 	private boolean secureMode = false;
-	// 6 seconds is default. Seems to be too small for travis.
+	// 6 seconds is default. Seems to be too small for travis. 30 seconds
 	private String zkTimeout = "30000";
 
 	public String getBrokerConnectionString() {
@@ -141,9 +141,9 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 	@Override
 	public void prepare(int numKafkaServers, Properties additionalServerProperties, boolean secureMode) {
 
-		//increase the timeout since in Travis ZK connection takes long time.
+		//increase the timeout since in Travis ZK connection takes long time for secure connection.
 		if(secureMode) {
-			zkTimeout = "360000";
+			zkTimeout = String.valueOf(Integer.parseInt(zkTimeout) * 10);
 		}
 
 		this.additionalServerProperties = additionalServerProperties;
@@ -269,13 +269,14 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 		LOG.info("Topic {} create request is successfully posted", topic);
 
 		// validate that the topic has been created
-		final long deadline = System.currentTimeMillis() + 30000;
+		final long deadline = System.currentTimeMillis() + Integer.parseInt(zkTimeout);
 		do {
 			try {
 				if(secureMode) {
-					//wait for 10 seconds since in Travis there ZK timeout occurs frequently
-					LOG.info("waiting for 10 secs before the topic {} can be checked", topic);
-					Thread.sleep(10000);
+					//increase wait time since in Travis ZK timeout occurs frequently
+					int wait = Integer.parseInt(zkTimeout) / 10;
+					LOG.info("waiting for {} msecs before the topic {} can be checked", wait, topic);
+					Thread.sleep(wait);
 				} else {
 					Thread.sleep(100);
 				}
