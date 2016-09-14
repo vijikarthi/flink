@@ -66,7 +66,7 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 	private Properties standardProps;
 	private Properties additionalServerProperties;
 	private boolean secureMode = false;
-	// 6 seconds is default. Seems to be too small for travis.
+	// 6 seconds is default. Seems to be too small for travis. 30 seconds
 	private String zkTimeout = "30000";
 
 	public String getBrokerConnectionString() {
@@ -141,9 +141,11 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 	@Override
 	public void prepare(int numKafkaServers, Properties additionalServerProperties, boolean secureMode) {
 
-		//increase the timeout since in Travis it is failing.
+		//increase the timeout since in Travis ZK connection takes long time for secure connection.
 		if(secureMode) {
-			zkTimeout = "270000";
+			//run only one kafka server to avoid multiple ZK connections from many instances - Travis timeout
+			numKafkaServers = 1;
+			zkTimeout = String.valueOf(Integer.parseInt(zkTimeout) * 15);
 		}
 
 		this.additionalServerProperties = additionalServerProperties;
@@ -266,23 +268,37 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 			zkUtils.close();
 		}
 
+		LOG.info("Topic {} create request is successfully posted", topic);
+
 		// validate that the topic has been created
-		final long deadline = System.currentTimeMillis() + 30000;
+		final long deadline = System.currentTimeMillis() + Integer.parseInt(zkTimeout);
 		do {
 			try {
-				Thread.sleep(100);
+				if(secureMode) {
+					//increase wait time since in Travis ZK timeout occurs frequently
+					int wait = Integer.parseInt(zkTimeout) / 100;
+					LOG.info("waiting for {} msecs before the topic {} can be checked", wait, topic);
+					Thread.sleep(wait);
+				} else {
+					Thread.sleep(100);
+				}
+
 			} catch (InterruptedException e) {
 				// restore interrupted state
 			}
 			// we could use AdminUtils.topicExists(zkUtils, topic) here, but it's results are
 			// not always correct.
 
+			LOG.info("Validating if the topic {} has been created or not", topic);
+
 			// create a new ZK utils connection
 			ZkUtils checkZKConn = getZkUtils();
 			if(AdminUtils.topicExists(checkZKConn, topic)) {
+				LOG.info("topic {} has been created successfully", topic);
 				checkZKConn.close();
 				return;
 			}
+			LOG.info("topic {} has not been created yet. Will check again...", topic);
 			checkZKConn.close();
 		}
 		while (System.currentTimeMillis() < deadline);
@@ -369,6 +385,11 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 			prop.put("security.inter.broker.protocol", "SASL_PLAINTEXT");
 			prop.put("security.protocol", "SASL_PLAINTEXT");
 			prop.put("sasl.kerberos.service.name", "kafka");
+
+			//add special timeout for Travis
+			prop.setProperty("zookeeper.session.timeout.ms", zkTimeout);
+			prop.setProperty("zookeeper.connection.timeout.ms", zkTimeout);
+			prop.setProperty("metadata.fetch.timeout.ms","120000");
 		}
 		return prop;
 	}

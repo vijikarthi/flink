@@ -1585,6 +1585,8 @@ object TaskManager {
       }
     }
 
+    conf.setString(ConfigConstants.FLINK_BASE_DIR_PATH_KEY, cliConfig.getConfigDir() + "/..")
+
     conf
   }
 

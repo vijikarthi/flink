@@ -115,7 +115,7 @@ public class YarnApplicationMasterRunner {
 
 	/**
 	 * The instance entry point for the YARN application master. Obtains user group
-	 * information and calls the main work method {@link #runApplicationMaster()} as a
+	 * information and calls the main work method {@link #runApplicationMaster(Configuration)} as a
 	 * privileged action.
 	 *
 	 * @param args The command line arguments.
@@ -164,12 +164,24 @@ public class YarnApplicationMasterRunner {
 				sc.setHadoopConfiguration(conf);
 			}
 
-			SecurityContext.install(sc.setCredentials(keytabPath, remoteKeytabPrincipal));
+			// Flink configuration
+			final Map<String, String> dynamicProperties =
+					FlinkYarnSessionCli.getDynamicProperties(ENV.get(YarnConfigKeys.ENV_DYNAMIC_PROPERTIES));
+			LOG.debug("YARN dynamic properties: {}", dynamicProperties);
+
+			final Configuration flinkConfig = createConfiguration(currDir, dynamicProperties);
+			if(keytabPath != null && remoteKeytabPrincipal != null) {
+				flinkConfig.setString(ConfigConstants.SECURITY_KEYTAB_KEY, keytabPath);
+				flinkConfig.setString(ConfigConstants.SECURITY_PRINCIPAL_KEY, remoteKeytabPrincipal);
+			}
+			flinkConfig.setString(ConfigConstants.FLINK_BASE_DIR_PATH_KEY, currDir);
+
+			SecurityContext.install(sc.setFlinkConfiguration(flinkConfig));
 
 			return SecurityContext.getInstalled().runSecured(new SecurityContext.FlinkSecuredRunner<Integer>() {
 				@Override
 				public Integer run() {
-					return runApplicationMaster();
+					return runApplicationMaster(flinkConfig);
 				}
 			});
 
@@ -190,7 +202,7 @@ public class YarnApplicationMasterRunner {
 	 *
 	 * @return The return code for the Java process.
 	 */
-	protected int runApplicationMaster() {
+	protected int runApplicationMaster(Configuration config) {
 		ActorSystem actorSystem = null;
 		WebMonitor webMonitor = null;
 
@@ -211,13 +223,6 @@ public class YarnApplicationMasterRunner {
 				"ApplicationMaster hostname variable %s not set", Environment.NM_HOST.key());
 
 			LOG.info("YARN assigned hostname for application master: {}", appMasterHostname);
-
-			// Flink configuration
-			final Map<String, String> dynamicProperties =
-				FlinkYarnSessionCli.getDynamicProperties(ENV.get(YarnConfigKeys.ENV_DYNAMIC_PROPERTIES));
-			LOG.debug("YARN dynamic properties: {}", dynamicProperties);
-
-			final Configuration config = createConfiguration(currDir, dynamicProperties);
 
 			//Update keytab and principal path to reflect YARN container path location
 			final String remoteKeytabPath = ENV.get(YarnConfigKeys.KEYTAB_PATH);

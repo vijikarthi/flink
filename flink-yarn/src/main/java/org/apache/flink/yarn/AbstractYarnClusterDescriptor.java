@@ -24,6 +24,7 @@ import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.GlobalConfiguration;
 import org.apache.flink.runtime.akka.AkkaUtils;
 import org.apache.flink.runtime.jobmanager.HighAvailabilityMode;
+import org.apache.flink.runtime.security.SecurityContext;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -518,6 +519,12 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 				LOG.warn("The configuration directory ('" + configurationDirectory + "') contains both LOG4J and " +
 					"Logback configuration files. Please delete or rename one of them.");
 			}
+		}
+
+		//check if there is a JAAS config file
+		File jaasConfigFile = new File(configurationDirectory + File.separator + SecurityContext.JAAS_CONF_FILENAME);
+		if (jaasConfigFile.exists() && jaasConfigFile.isFile()) {
+			effectiveShipFiles.add(jaasConfigFile);
 		}
 
 		addLibFolderToShipFiles(effectiveShipFiles);

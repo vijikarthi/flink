@@ -22,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -45,6 +46,8 @@ import java.util.Collection;
 public class SecurityContext {
 
 	private static final Logger LOG = LoggerFactory.getLogger(SecurityContext.class);
+
+	public static final String JAAS_CONF_FILENAME = "flink-jaas.conf";
 
 	private static SecurityContext installedContext;
 
@@ -79,9 +82,8 @@ public class SecurityContext {
 		JaasConfiguration jaasConfig = new JaasConfiguration(config.keytab, config.principal);
 		javax.security.auth.login.Configuration.setConfiguration(jaasConfig);
 
-		//hack since Kafka Login Handler explicitly looks for the property or else it throws an exception
-		//https://github.com/apache/kafka/blob/0.9.0/clients/src/main/java/org/apache/kafka/common/security/kerberos/Login.java#L289
-		System.setProperty("java.security.auth.login.config", "");
+		//temporary fix
+		populateJaasConfigSystemProperty(config.flinkConf);
 
 		// establish the UGI login user
 		UserGroupInformation.setConfiguration(config.hadoopConf);
@@ -155,6 +157,58 @@ public class SecurityContext {
 		installedContext = new SecurityContext(loginUser);
 	}
 
+	/*
+	 * This is a temporary fix to support both Kafka and ZK client libraries
+	 * that are expecting the system variable to determine secure cluster
+	 */
+	private static void populateJaasConfigSystemProperty(Configuration configuration) {
+
+		//hack since Kafka Login Handler explicitly looks for the property or else it throws an exception
+		//https://github.com/apache/kafka/blob/0.9.0/clients/src/main/java/org/apache/kafka/common/security/kerberos/Login.java#L289
+		if(null == configuration) {
+			System.setProperty("java.security.auth.login.config", "");
+			return;
+		}
+
+		String baseDir = configuration.getString(ConfigConstants.FLINK_BASE_DIR_PATH_KEY, null);
+		if(baseDir == null) {
+			System.setProperty("java.security.auth.login.config", "");
+			return;
+		}
+
+		File f = new File(baseDir);
+		if(!f.exists() || !f.isDirectory()) {
+			LOG.error("Invalid flink base directory {} configuration provided", baseDir);
+			throw new IllegalConfigurationException("Invalid flink base directory configuration provided");
+		}
+
+		File jaasConfigFile = new File(f, JAAS_CONF_FILENAME);
+
+		if (!jaasConfigFile.exists() || !jaasConfigFile.isFile()) {
+
+			//check if there is a conf directory
+			File confDir = new File(f, "conf");
+			if(!confDir.exists() || !confDir.isDirectory()) {
+				LOG.error("Could not locate " + JAAS_CONF_FILENAME);
+				throw new IllegalConfigurationException("Could not locate " + JAAS_CONF_FILENAME);
+			}
+
+			jaasConfigFile = new File(confDir, JAAS_CONF_FILENAME);
+
+			if (!jaasConfigFile.exists() || !jaasConfigFile.isFile()) {
+				LOG.error("Could not locate " + JAAS_CONF_FILENAME);
+				throw new IllegalConfigurationException("Could not locate " + JAAS_CONF_FILENAME);
+			}
+		}
+
+		LOG.info("Found the JAAS config file: {}", jaasConfigFile);
+
+		//ZK client module lookup the configuration to handle SASL. This is a temporary hack
+		//https://github.com/sgroschupf/zkclient/blob/master/src/main/java/org/I0Itec/zkclient/ZkClient.java#L900
+		System.setProperty("java.security.auth.login.config", jaasConfigFile.getAbsolutePath());
+
+	}
+
 	/**
 	 * Inputs for establishing the security context.
 	 */
@@ -197,17 +251,6 @@ public class SecurityContext {
 
 		public SecurityConfiguration setHadoopConfiguration(org.apache.hadoop.conf.Configuration conf) {
 			this.hadoopConf = conf;
-			return this;
-		}
-
-		public SecurityConfiguration setCredentials(String userKeytab, String userPrincipal) {
-
-			validate(userKeytab, userPrincipal);
-
-			this.keytab = userKeytab;
-
-			this.principal = userPrincipal;
-
 			return this;
 		}
 
