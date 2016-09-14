@@ -170,8 +170,10 @@ public class YarnApplicationMasterRunner {
 			LOG.debug("YARN dynamic properties: {}", dynamicProperties);
 
 			final Configuration flinkConfig = createConfiguration(currDir, dynamicProperties);
-			flinkConfig.setString(ConfigConstants.SECURITY_KEYTAB_KEY, keytabPath);
-			flinkConfig.setString(ConfigConstants.SECURITY_PRINCIPAL_KEY, remoteKeytabPrincipal);
+			if(keytabPath != null && remoteKeytabPrincipal != null) {
+				flinkConfig.setString(ConfigConstants.SECURITY_KEYTAB_KEY, keytabPath);
+				flinkConfig.setString(ConfigConstants.SECURITY_PRINCIPAL_KEY, remoteKeytabPrincipal);
+			}
 			flinkConfig.setString(ConfigConstants.FLINK_BASE_DIR_PATH_KEY, currDir);
 
 			SecurityContext.install(sc.setFlinkConfiguration(flinkConfig));

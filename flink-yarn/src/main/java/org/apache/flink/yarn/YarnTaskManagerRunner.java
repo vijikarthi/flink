@@ -120,8 +120,10 @@ public class YarnTaskManagerRunner {
 				sc.setHadoopConfiguration(conf);
 			}
 
-			configuration.setString(ConfigConstants.SECURITY_KEYTAB_KEY, keytabPath);
-			configuration.setString(ConfigConstants.SECURITY_PRINCIPAL_KEY, remoteKeytabPrincipal);
+			if(keytabPath != null && remoteKeytabPrincipal != null) {
+				configuration.setString(ConfigConstants.SECURITY_KEYTAB_KEY, keytabPath);
+				configuration.setString(ConfigConstants.SECURITY_PRINCIPAL_KEY, remoteKeytabPrincipal);
+			}
 			configuration.setString(ConfigConstants.FLINK_BASE_DIR_PATH_KEY, currDir);
 
 			SecurityContext.install(sc.setFlinkConfiguration(configuration));
