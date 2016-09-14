@@ -19,6 +19,7 @@
 package org.apache.flink.test.util;
 
 import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.security.SecurityContext;
 import org.apache.hadoop.minikdc.MiniKdc;
 import org.junit.rules.TemporaryFolder;
@@ -27,6 +28,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.BufferedWriter;
+import java.io.PrintWriter;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -106,8 +111,13 @@ public class SecureTestEnvironment {
 			//the context can be reinitialized with Hadoop configuration by calling
 			//ctx.setHadoopConfiguration() for the UGI implementation to work properly.
 			//See Yarn test case module for reference
+			createJaasConfig(baseDirForSecureRun);
 			SecurityContext.SecurityConfiguration ctx = new SecurityContext.SecurityConfiguration();
-			ctx.setCredentials(testKeytab, testPrincipal);
+			Configuration flinkConfig = new Configuration();
+			flinkConfig.setString(ConfigConstants.SECURITY_KEYTAB_KEY, testKeytab);
+			flinkConfig.setString(ConfigConstants.SECURITY_PRINCIPAL_KEY, testPrincipal);
+			flinkConfig.setString(ConfigConstants.FLINK_BASE_DIR_PATH_KEY, baseDirForSecureRun.getAbsolutePath());
+			ctx.setFlinkConfiguration(flinkConfig);
 			TestingSecurityContext.install(ctx, getClientSecurityConfigurationMap());
 
 			populateSystemEnvVariables();
@@ -213,5 +223,22 @@ public class SecureTestEnvironment {
 
 	public static String getHadoopServicePrincipal() {
 		return hadoopServicePrincipal;
+	}
+
+	private static void  createJaasConfig(File baseDirForSecureRun) {
+
+		try(FileWriter fw = new FileWriter(new File(baseDirForSecureRun,SecurityContext.JAAS_CONF_FILENAME), true);
+			BufferedWriter bw = new BufferedWriter(fw);
+			PrintWriter out = new PrintWriter(bw))
+		{
+			out.println("sample {");
+			out.println("useKeyTab=false");
+			out.println("useTicketCache=true;");
+			out.println("};");
+		} catch (IOException e) {
+			LOG.error("Exception occured while trying to create JAAS config. Reason: {}", e.getMessage());
+			throw new RuntimeException(e);
+		}
+
 	}
 }

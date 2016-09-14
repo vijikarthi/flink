@@ -120,7 +120,11 @@ public class YarnTaskManagerRunner {
 				sc.setHadoopConfiguration(conf);
 			}
 
-			SecurityContext.install(sc.setCredentials(keytabPath, remoteKeytabPrincipal));
+			configuration.setString(ConfigConstants.SECURITY_KEYTAB_KEY, keytabPath);
+			configuration.setString(ConfigConstants.SECURITY_PRINCIPAL_KEY, remoteKeytabPrincipal);
+			configuration.setString(ConfigConstants.FLINK_BASE_DIR_PATH_KEY, currDir);
+
+			SecurityContext.install(sc.setFlinkConfiguration(configuration));
 
 			SecurityContext.getInstalled().runSecured(new SecurityContext.FlinkSecuredRunner<Integer>() {
 				@Override

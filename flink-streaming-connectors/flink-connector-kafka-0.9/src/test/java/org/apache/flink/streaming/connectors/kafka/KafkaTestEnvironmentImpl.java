@@ -276,7 +276,7 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 			try {
 				if(secureMode) {
 					//increase wait time since in Travis ZK timeout occurs frequently
-					int wait = Integer.parseInt(zkTimeout) / 10;
+					int wait = Integer.parseInt(zkTimeout) / 100;
 					LOG.info("waiting for {} msecs before the topic {} can be checked", wait, topic);
 					Thread.sleep(wait);
 				} else {
@@ -389,6 +389,7 @@ public class KafkaTestEnvironmentImpl extends KafkaTestEnvironment {
 			//add special timeout for Travis
 			prop.setProperty("zookeeper.session.timeout.ms", zkTimeout);
 			prop.setProperty("zookeeper.connection.timeout.ms", zkTimeout);
+			prop.setProperty("metadata.fetch.timeout.ms","120000");
 		}
 		return prop;
 	}

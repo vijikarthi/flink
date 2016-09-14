@@ -19,6 +19,7 @@
 package org.apache.flink.streaming.connectors.fs;
 
 import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.security.SecurityContext;
 import org.apache.flink.streaming.util.TestStreamEnvironment;
 import org.apache.flink.test.util.SecureTestEnvironment;
@@ -94,8 +95,14 @@ public class RollingSinkSecuredITCase extends RollingSinkITCase {
 
 		populateSecureConfigurations();
 
+		Configuration flinkConfig = new Configuration();
+		flinkConfig.setString(ConfigConstants.SECURITY_KEYTAB_KEY,
+				SecureTestEnvironment.getTestKeytab());
+		flinkConfig.setString(ConfigConstants.SECURITY_PRINCIPAL_KEY,
+				SecureTestEnvironment.getHadoopServicePrincipal());
+
 		SecurityContext.SecurityConfiguration ctx = new SecurityContext.SecurityConfiguration();
-		ctx.setCredentials(SecureTestEnvironment.getTestKeytab(), SecureTestEnvironment.getHadoopServicePrincipal());
+		ctx.setFlinkConfiguration(flinkConfig);
 		ctx.setHadoopConfiguration(conf);
 		try {
 			TestingSecurityContext.install(ctx, SecureTestEnvironment.getClientSecurityConfigurationMap());

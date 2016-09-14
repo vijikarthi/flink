@@ -18,6 +18,8 @@
 
 package org.apache.flink.yarn;
 
+import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.security.SecurityContext;
 import org.apache.flink.test.util.SecureTestEnvironment;
 import org.apache.flink.test.util.TestingSecurityContext;
@@ -48,8 +50,14 @@ public class YARNSessionFIFOSecuredITCase extends YARNSessionFIFOITCase {
 		populateYarnSecureConfigurations(yarnConfiguration,SecureTestEnvironment.getHadoopServicePrincipal(),
 				SecureTestEnvironment.getTestKeytab());
 
+		Configuration flinkConfig = new Configuration();
+		flinkConfig.setString(ConfigConstants.SECURITY_KEYTAB_KEY,
+				SecureTestEnvironment.getTestKeytab());
+		flinkConfig.setString(ConfigConstants.SECURITY_PRINCIPAL_KEY,
+				SecureTestEnvironment.getHadoopServicePrincipal());
+
 		SecurityContext.SecurityConfiguration ctx = new SecurityContext.SecurityConfiguration();
-		ctx.setCredentials(SecureTestEnvironment.getTestKeytab(), SecureTestEnvironment.getHadoopServicePrincipal());
+		ctx.setFlinkConfiguration(flinkConfig);
 		ctx.setHadoopConfiguration(yarnConfiguration);
 		try {
 			TestingSecurityContext.install(ctx, SecureTestEnvironment.getClientSecurityConfigurationMap());

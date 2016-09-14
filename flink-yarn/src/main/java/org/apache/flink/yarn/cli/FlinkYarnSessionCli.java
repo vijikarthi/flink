@@ -469,7 +469,7 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 		String confDirPath = CliFrontend.getConfigurationDirectoryFromEnv();
 		GlobalConfiguration.loadConfiguration(confDirPath);
 		Configuration flinkConfiguration = GlobalConfiguration.loadConfiguration();
-
+		flinkConfiguration.setString(ConfigConstants.FLINK_BASE_DIR_PATH_KEY, confDirPath);
 		try {
 			SecurityContext.install(new SecurityContext.SecurityConfiguration().setFlinkConfiguration(flinkConfiguration));
 			int retCode = SecurityContext.getInstalled().runSecured(new SecurityContext.FlinkSecuredRunner<Integer>() {
