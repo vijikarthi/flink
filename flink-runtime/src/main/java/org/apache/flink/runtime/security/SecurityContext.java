@@ -81,7 +81,7 @@ public class SecurityContext {
 
 		//hack since Kafka Login Handler explicitly looks for the property or else it throws an exception
 		//https://github.com/apache/kafka/blob/0.9.0/clients/src/main/java/org/apache/kafka/common/security/kerberos/Login.java#L289
-		System.setProperty("java.security.auth.login.config", "");
+		System.setProperty("java.security.auth.login.config", config.keytab);
 
 		// establish the UGI login user
 		UserGroupInformation.setConfiguration(config.hadoopConf);
