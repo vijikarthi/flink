@@ -225,6 +225,10 @@ public class SecureTestEnvironment {
 		return hadoopServicePrincipal;
 	}
 
+	/*
+	 * Helper method to create a temporary JAAS configuration file to ger around the Kafka and ZK SASL
+	 * implementation lookup java.security.auth.login.config
+	 */
 	private static void  createJaasConfig(File baseDirForSecureRun) {
 
 		try(FileWriter fw = new FileWriter(new File(baseDirForSecureRun,SecurityContext.JAAS_CONF_FILENAME), true);

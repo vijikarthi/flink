@@ -205,9 +205,7 @@ public class SecurityContext {
 
 		//ZK client module lookup the configuration to handle SASL. This is a temporary hack
 		//https://github.com/sgroschupf/zkclient/blob/master/src/main/java/org/I0Itec/zkclient/ZkClient.java#L900
-
 		System.setProperty("java.security.auth.login.config", jaasConfigFile.getAbsolutePath());
-		//System.setProperty("java.security.auth.login.config", "");
 
 	}
 
@@ -253,17 +251,6 @@ public class SecurityContext {
 
 		public SecurityConfiguration setHadoopConfiguration(org.apache.hadoop.conf.Configuration conf) {
 			this.hadoopConf = conf;
-			return this;
-		}
-
-		private SecurityConfiguration setCredentials(String userKeytab, String userPrincipal) {
-
-			validate(userKeytab, userPrincipal);
-
-			this.keytab = userKeytab;
-
-			this.principal = userPrincipal;
-
 			return this;
 		}
 

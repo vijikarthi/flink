@@ -53,6 +53,8 @@ public class Kafka09SecureRunITCase extends KafkaConsumerTestBase {
 	}
 
 
+	//timeout interval is large since in Travis, ZK connection timeout occurs frequently
+	//The timeout for the test case is 2 times timeout of ZK connection
 	@Test(timeout = 600000)
 	public void testMultipleTopics() throws Exception {
 		runProduceConsumeMultipleTopics();
