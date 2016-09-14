@@ -758,6 +758,12 @@ public final class ConfigConstants {
 	@PublicEvolving
 	public static final String HA_ZOOKEEPER_MAX_RETRY_ATTEMPTS = "high-availability.zookeeper.client.max-retry-attempts";
 
+	@PublicEvolving
+	public static final String ZOOKEEPER_SASL_DISABLE = "zookeeper.sasl.disable";
+
+	@PublicEvolving
+	public static final String ZOOKEEPER_SASL_SERVICE_NAME = "zookeeper.sasl.service-name";
+
 	/** Deprecated in favour of {@link #HA_ZOOKEEPER_QUORUM_KEY}. */
 	@Deprecated
 	public static final String ZOOKEEPER_QUORUM_KEY = "recovery.zookeeper.quorum";
@@ -1232,6 +1238,9 @@ public final class ConfigConstants {
 
 	/** ZooKeeper default leader port. */
 	public static final int DEFAULT_ZOOKEEPER_LEADER_PORT = 3888;
+
+	/** Defaults for ZK client security **/
+	public static final boolean DEFAULT_ZOOKEEPER_SASL_DISABLE = true;
 
 	// ------------------------- Queryable state ------------------------------
 

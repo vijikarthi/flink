@@ -20,7 +20,6 @@ package org.apache.flink.streaming.connectors.kafka;
 import org.apache.flink.test.util.SecureTestEnvironment;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,11 +59,4 @@ public class Kafka09SecureRunITCase extends KafkaConsumerTestBase {
 		runProduceConsumeMultipleTopics();
 	}
 
-	@Ignore
-	//timeout interval is large since in Travis, ZK connection timeout occurs frequently
-	//The timeout for the test case is 2 times timeout of ZK connection
-	@Test(timeout = 600000)
-	public void testOneToOneSources() throws Exception {
-		runOneToOneExactlyOnceTest();
-	}
 }
