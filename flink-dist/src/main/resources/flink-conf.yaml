@@ -154,3 +154,16 @@ jobmanager.web.port: 8081
 
 #security.keytab: /path/to/kerberos/keytab
 #security.principal: flink-user
+
+#==============================================================================
+# ZK Security Configuration (optional configuration)
+#==============================================================================
+# Below configurations are applicable if ZK quorum is configured for Kerberos security
+
+# SASL authentication is disabled by default and can be enabled by changig the value to false
+#
+# zookeeper.sasl.disable: true
+
+# Override below configuration to provide custom ZK service name if configured
+#
+# zookeeper.sasl.service-name: zookeeper
