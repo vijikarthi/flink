@@ -49,6 +49,12 @@ public class SecurityContext {
 
 	public static final String JAAS_CONF_FILENAME = "flink-jaas.conf";
 
+	private static final String JAVA_SECURITY_AUTH_LOGIN_CONFIG = "java.security.auth.login.config";
+
+	private static final String ZOOKEEPER_SASL_CLIENT = "zookeeper.sasl.client";
+
+	private static final String ZOOKEEPER_SASL_CLIENT_USERNAME = "zookeeper.sasl.client.username";
+
 	private static SecurityContext installedContext;
 
 	public static SecurityContext getInstalled() { return installedContext; }
@@ -157,17 +163,17 @@ public class SecurityContext {
 	}
 
 	/*
-	 * This method configures some of the system property that are require for ZK and Kafka SASL authentication
+	 * This method configures some of the system properties that are require for ZK and Kafka SASL authentication
 	 * See: https://github.com/apache/kafka/blob/0.9.0/clients/src/main/java/org/apache/kafka/common/security/kerberos/Login.java#L289
 	 * See: https://github.com/sgroschupf/zkclient/blob/master/src/main/java/org/I0Itec/zkclient/ZkClient.java#L900
-	 * In this method, setting java.security.auth.login.config configuration is temporary hack only to support ZK and
-	 * Kafka current code behavior
+	 * In this method, setting java.security.auth.login.config configuration is configured only to support ZK and
+	 * Kafka current code behavior.
 	 */
 	private static void populateSystemSecurityProperties(Configuration configuration) {
 
 		//required to be empty for Kafka but we will override the property
 		//with pseudo JAAS configuration file if SASL auth is enabled for ZK
-		System.setProperty("java.security.auth.login.config", "");
+		System.setProperty(JAVA_SECURITY_AUTH_LOGIN_CONFIG, "");
 
 		if(configuration == null) {
 			return;
@@ -178,7 +184,7 @@ public class SecurityContext {
 		if(disableSaslClient) {
 			LOG.info("SASL client auth for ZK will be disabled");
 			//SASL auth is disabled by default but will be enabled if specified in configuration
-			System.setProperty("zookeeper.sasl.client","false");
+			System.setProperty(ZOOKEEPER_SASL_CLIENT,"false");
 			return;
 		}
 
@@ -215,17 +221,18 @@ public class SecurityContext {
 			}
 		}
 
-		LOG.info("Enabling java.security.auth.login.config property with pseudo JAAS config file: {}", jaasConfigFile);
+		LOG.info("Enabling {} property with pseudo JAAS config file: {}",
+				JAVA_SECURITY_AUTH_LOGIN_CONFIG, jaasConfigFile);
 
-		//ZK client module lookup the configuration to handle SASL. This is a temporary hack
+		//ZK client module lookup the configuration to handle SASL.
 		//https://github.com/sgroschupf/zkclient/blob/master/src/main/java/org/I0Itec/zkclient/ZkClient.java#L900
-		System.setProperty("java.security.auth.login.config", jaasConfigFile.getAbsolutePath());
-		System.setProperty("zookeeper.sasl.client","true");
+		System.setProperty(JAVA_SECURITY_AUTH_LOGIN_CONFIG, jaasConfigFile.getAbsolutePath());
+		System.setProperty(ZOOKEEPER_SASL_CLIENT,"true");
 
 		String zkSaslServiceName = configuration.getString(ConfigConstants.ZOOKEEPER_SASL_SERVICE_NAME, null);
 		if(!StringUtils.isBlank(zkSaslServiceName)) {
 			LOG.info("ZK SASL service name: {} is provided in the configuration", zkSaslServiceName);
-			System.setProperty("zookeeper.sasl.client.username",zkSaslServiceName);
+			System.setProperty(ZOOKEEPER_SASL_CLIENT_USERNAME,zkSaslServiceName);
 		}
 
 	}
