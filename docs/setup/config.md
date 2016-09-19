@@ -135,12 +135,7 @@ Flink supports hardening below cluster components through secure cookie implemen
 
 - Blob Service
 
-### Secure Cookie Authentication
-
-Flink supports hardening below cluster components through secure cookie implementation.
-- Akka endpoints
-- Blob Server/Client communication
-- Web runtime communication
+- Task Manager/Netty data transfer communication 
 
 Secure cookie authentication can be enabled by providing below configurations to Flink configuration file.
 

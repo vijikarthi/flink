@@ -100,6 +100,8 @@ The primary goal is to secure the following components by introducing a shared s
 
 - Blob Service
 
+- Task Manager/Netty data transfer communication 
+
 ## Security Configurations
 
 Secure cookie configuration can be supplied by adding below configuration elements to Flink configuration file:
@@ -152,3 +154,11 @@ The message header (GET|PUT|DELETE) is altered to include the secure cookie deta
 Message header format:
 
 | COOKIE LENGTH | COOKIE VALUE | OPERATION CODE | KEY TYPE | KEY LENGTH | KEY VALUE |
+
+### Netty data transfer
+
+Netty message structure is altered to include secure cookie. When a message is received, the decoder parses and validates the secure cookie to ensure that it matches with its own configuration for the request to further proceed.
+
+Message header format:
+
+| FRAME LENGTH (4) | MAGIC NUMBER (4) | COOKIE (4) | ID (1) | CUSTOM MESSAGE |

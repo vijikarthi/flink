@@ -73,6 +73,8 @@ public class CancelPartitionRequestTest {
 
 			CountDownLatch sync = new CountDownLatch(1);
 
+			String secureCookie = "";
+
 			ResultSubpartitionView view = spy(new InfiniteSubpartitionView(outboundBuffers, sync));
 
 			// Return infinite subpartition
@@ -80,14 +82,14 @@ public class CancelPartitionRequestTest {
 					.thenReturn(view);
 
 			PartitionRequestProtocol protocol = new PartitionRequestProtocol(
-					partitions, mock(TaskEventDispatcher.class), mock(NetworkBufferPool.class));
+					partitions, mock(TaskEventDispatcher.class), mock(NetworkBufferPool.class), secureCookie);
 
 			serverAndClient = initServerAndClient(protocol);
 
 			Channel ch = connect(serverAndClient);
 
 			// Request for non-existing input channel => results in cancel request
-			ch.writeAndFlush(new PartitionRequest(pid, 0, new InputChannelID())).await();
+			ch.writeAndFlush(new PartitionRequest(pid, 0, new InputChannelID(), secureCookie)).await();
 
 			// Wait for the notification
 			if (!sync.await(TestingUtils.TESTING_DURATION().toMillis(), TimeUnit.MILLISECONDS)) {
@@ -117,6 +119,8 @@ public class CancelPartitionRequestTest {
 
 			CountDownLatch sync = new CountDownLatch(1);
 
+			String secureCookie = "";
+
 			ResultSubpartitionView view = spy(new InfiniteSubpartitionView(outboundBuffers, sync));
 
 			// Return infinite subpartition
@@ -124,7 +128,7 @@ public class CancelPartitionRequestTest {
 					.thenReturn(view);
 
 			PartitionRequestProtocol protocol = new PartitionRequestProtocol(
-					partitions, mock(TaskEventDispatcher.class), mock(NetworkBufferPool.class));
+					partitions, mock(TaskEventDispatcher.class), mock(NetworkBufferPool.class), secureCookie);
 
 			serverAndClient = initServerAndClient(protocol);
 
@@ -133,7 +137,7 @@ public class CancelPartitionRequestTest {
 			// Request for non-existing input channel => results in cancel request
 			InputChannelID inputChannelId = new InputChannelID();
 
-			ch.writeAndFlush(new PartitionRequest(pid, 0, inputChannelId)).await();
+			ch.writeAndFlush(new PartitionRequest(pid, 0, inputChannelId, secureCookie)).await();
 
 			// Wait for the notification
 			if (!sync.await(TestingUtils.TESTING_DURATION().toMillis(), TimeUnit.MILLISECONDS)) {
@@ -141,7 +145,7 @@ public class CancelPartitionRequestTest {
 						" ms to be notified about cancelled partition.");
 			}
 
-			ch.writeAndFlush(new CancelPartitionRequest(inputChannelId)).await();
+			ch.writeAndFlush(new CancelPartitionRequest(inputChannelId, secureCookie)).await();
 
 			ch.close();
 

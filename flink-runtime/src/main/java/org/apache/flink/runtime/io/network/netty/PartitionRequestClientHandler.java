@@ -69,6 +69,12 @@ class PartitionRequestClientHandler extends ChannelInboundHandlerAdapter {
 
 	private volatile ChannelHandlerContext ctx;
 
+	private final String secureCookie;
+
+	public PartitionRequestClientHandler(String secureCookie) {
+		this.secureCookie = secureCookie;
+	}
+
 	// ------------------------------------------------------------------------
 	// Input channel/receiver registration
 	// ------------------------------------------------------------------------
@@ -91,7 +97,7 @@ class PartitionRequestClientHandler extends ChannelInboundHandlerAdapter {
 		}
 
 		if (cancelled.putIfAbsent(inputChannelId, inputChannelId) == null) {
-			ctx.writeAndFlush(new NettyMessage.CancelPartitionRequest(inputChannelId));
+			ctx.writeAndFlush(new NettyMessage.CancelPartitionRequest(inputChannelId, secureCookie));
 		}
 	}
 

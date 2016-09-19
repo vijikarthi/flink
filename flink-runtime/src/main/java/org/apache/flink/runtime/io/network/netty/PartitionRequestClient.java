@@ -55,6 +55,8 @@ public class PartitionRequestClient {
 
 	private final PartitionRequestClientFactory clientFactory;
 
+	private final String secureCookie;
+
 	// If zero, the underlying TCP channel can be safely closed
 	private final AtomicDisposableReferenceCounter closeReferenceCounter = new AtomicDisposableReferenceCounter();
 
@@ -62,12 +64,14 @@ public class PartitionRequestClient {
 			Channel tcpChannel,
 			PartitionRequestClientHandler partitionRequestHandler,
 			ConnectionID connectionId,
-			PartitionRequestClientFactory clientFactory) {
+			PartitionRequestClientFactory clientFactory,
+			String secureCookie) {
 
 		this.tcpChannel = checkNotNull(tcpChannel);
 		this.partitionRequestHandler = checkNotNull(partitionRequestHandler);
 		this.connectionId = checkNotNull(connectionId);
 		this.clientFactory = checkNotNull(clientFactory);
+		this.secureCookie = secureCookie;
 	}
 
 	boolean disposeIfNotUsed() {
@@ -104,7 +108,7 @@ public class PartitionRequestClient {
 		partitionRequestHandler.addInputChannel(inputChannel);
 
 		final PartitionRequest request = new PartitionRequest(
-				partitionId, subpartitionIndex, inputChannel.getInputChannelId());
+				partitionId, subpartitionIndex, inputChannel.getInputChannelId(), secureCookie);
 
 		final ChannelFutureListener listener = new ChannelFutureListener() {
 			@Override
@@ -150,7 +154,8 @@ public class PartitionRequestClient {
 	public void sendTaskEvent(ResultPartitionID partitionId, TaskEvent event, final RemoteInputChannel inputChannel) throws IOException {
 		checkNotClosed();
 
-		tcpChannel.writeAndFlush(new TaskEventRequest(event, partitionId, inputChannel.getInputChannelId()))
+		tcpChannel.writeAndFlush(new TaskEventRequest(event, partitionId,
+				inputChannel.getInputChannelId(), secureCookie))
 				.addListener(
 						new ChannelFutureListener() {
 							@Override
@@ -172,7 +177,7 @@ public class PartitionRequestClient {
 		if (closeReferenceCounter.decrement()) {
 			// Close the TCP connection. Send a close request msg to ensure
 			// that outstanding backwards task events are not discarded.
-			tcpChannel.writeAndFlush(new NettyMessage.CloseRequest())
+			tcpChannel.writeAndFlush(new NettyMessage.CloseRequest(secureCookie))
 					.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
 
 			// Make sure to remove the client from the factory
