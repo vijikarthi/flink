@@ -30,16 +30,29 @@ class PartitionRequestProtocol implements NettyProtocol {
 
 	private final NettyMessageEncoder messageEncoder = new NettyMessageEncoder();
 
-	private final NettyMessage.NettyMessageDecoder messageDecoder = new NettyMessage.NettyMessageDecoder();
+	private final NettyMessage.NettyMessageDecoder serverMessageDecoder;
+
+	private final NettyMessage.NettyMessageDecoder clientMessageDecoder;
 
 	private final ResultPartitionProvider partitionProvider;
 	private final TaskEventDispatcher taskEventDispatcher;
 	private final NetworkBufferPool networkbufferPool;
+	private final String secureCookie;
 
-	PartitionRequestProtocol(ResultPartitionProvider partitionProvider, TaskEventDispatcher taskEventDispatcher, NetworkBufferPool networkbufferPool) {
+	PartitionRequestProtocol(ResultPartitionProvider partitionProvider, TaskEventDispatcher taskEventDispatcher,
+							NetworkBufferPool networkbufferPool, String secureCookie) {
 		this.partitionProvider = partitionProvider;
 		this.taskEventDispatcher = taskEventDispatcher;
 		this.networkbufferPool = networkbufferPool;
+		this.secureCookie = (secureCookie == null || secureCookie.length() == 0) ? "": secureCookie;
+
+		serverMessageDecoder = new NettyMessage.NettyMessageDecoder(secureCookie);
+
+		/*
+		 * Client decoder does not validate the secure cookie from server since
+		 * the server protocol does not transmit the secure cookie on the wire
+		 */
+		clientMessageDecoder = new NettyMessage.NettyMessageDecoder(null);
 	}
 
 	// +-------------------------------------------------------------------+
@@ -75,14 +88,14 @@ class PartitionRequestProtocol implements NettyProtocol {
 
 	@Override
 	public ChannelHandler[] getServerChannelHandlers() {
-		PartitionRequestQueue queueOfPartitionQueues = new PartitionRequestQueue();
+		PartitionRequestQueue queueOfPartitionQueues = new PartitionRequestQueue(secureCookie);
 		PartitionRequestServerHandler serverHandler = new PartitionRequestServerHandler(
-				partitionProvider, taskEventDispatcher, queueOfPartitionQueues, networkbufferPool);
+				partitionProvider, taskEventDispatcher, queueOfPartitionQueues, networkbufferPool, secureCookie);
 
 		return new ChannelHandler[] {
 				messageEncoder,
 				createFrameLengthDecoder(),
-				messageDecoder,
+				serverMessageDecoder,
 				serverHandler,
 				queueOfPartitionQueues
 		};
@@ -123,7 +136,7 @@ class PartitionRequestProtocol implements NettyProtocol {
 		return new ChannelHandler[] {
 				messageEncoder,
 				createFrameLengthDecoder(),
-				messageDecoder,
-				new PartitionRequestClientHandler()};
+				clientMessageDecoder,
+				new PartitionRequestClientHandler(secureCookie)};
 	}
 }

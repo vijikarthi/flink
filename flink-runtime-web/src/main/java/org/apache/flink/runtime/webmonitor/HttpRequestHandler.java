@@ -133,7 +133,6 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<HttpObject> 
 						String credentials = new String(
 								DatatypeConverter.parseBase64Binary(base64Credentials),
 								ENCODING);
-
 						final String[] values = credentials.split(":",2);
 						if(values.length != 2) {
 							String message = "Credentials supplied does not have proper values";

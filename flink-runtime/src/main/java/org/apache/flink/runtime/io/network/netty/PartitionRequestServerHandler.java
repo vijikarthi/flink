@@ -52,16 +52,20 @@ class PartitionRequestServerHandler extends SimpleChannelInboundHandler<NettyMes
 
 	private BufferPool bufferPool;
 
+	private final String secureCookie;
+
 	PartitionRequestServerHandler(
 			ResultPartitionProvider partitionProvider,
 			TaskEventDispatcher taskEventDispatcher,
 			PartitionRequestQueue outboundQueue,
-			NetworkBufferPool networkBufferPool) {
+			NetworkBufferPool networkBufferPool,
+			String secureCookie) {
 
 		this.partitionProvider = partitionProvider;
 		this.taskEventDispatcher = taskEventDispatcher;
 		this.outboundQueue = outboundQueue;
 		this.networkBufferPool = networkBufferPool;
+		this.secureCookie = secureCookie;
 	}
 
 	@Override

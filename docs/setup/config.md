@@ -135,9 +135,12 @@ Flink supports hardening below cluster components through secure cookie implemen
 
 - Blob Service
 
+- Task Manager/Netty data transfer communication 
+
 Secure cookie authentication can be enabled by providing below configurations to Flink configuration file.
 
 - `security.enabled`: A boolean value (true|false) indicating security is enabled or not.
+
 - `security.cookie` : Secure cookie value to be used for authorization. For standalone deployment mode, the secure cookie value is mandatory when security is enabled but for the Yarn mode it is optional (auto-generated if not provided).
 
 Alternatively, secure cookie value can be provided through Flink/Yarn CLI using "-k" or "--cookie" parameter option.

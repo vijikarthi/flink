@@ -33,7 +33,8 @@ public class PartitionRequestQueueTest {
 
 	@Test
 	public void testProducerFailedException() throws Exception {
-		PartitionRequestQueue queue = new PartitionRequestQueue();
+		String secureCookie = "";
+		PartitionRequestQueue queue = new PartitionRequestQueue(secureCookie);
 
 		EmbeddedChannel ch = new EmbeddedChannel(queue);
 
