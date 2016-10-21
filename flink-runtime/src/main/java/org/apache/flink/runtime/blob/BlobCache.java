@@ -72,8 +72,7 @@ public final class BlobCache implements BlobService {
 
 		this.blobClientConfig = blobClientConfig;
 
-		boolean securityEnabled = blobClientConfig.getBoolean(ConfigConstants.SECURITY_ENABLED,
-				ConfigConstants.DEFAULT_SECURITY_ENABLED);
+		boolean securityEnabled = BlobUtils.isSecurityEnabled(blobClientConfig);
 
 		this.secureCookie = blobClientConfig.getString(ConfigConstants.SECURITY_COOKIE, null);
 
@@ -285,7 +284,7 @@ public final class BlobCache implements BlobService {
 		}
 	}
 
-	/* Secure cookie to authenticate */
+	/* Secure cookie to authorize */
 	@Override
 	public String getSecureCookie() { return secureCookie; }
 }

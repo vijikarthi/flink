@@ -46,7 +46,6 @@ import static org.apache.flink.runtime.blob.BlobServerProtocol.NAME_ADDRESSABLE;
 import static org.apache.flink.runtime.blob.BlobServerProtocol.PUT_OPERATION;
 import static org.apache.flink.runtime.blob.BlobServerProtocol.RETURN_ERROR;
 import static org.apache.flink.runtime.blob.BlobServerProtocol.RETURN_OKAY;
-import static org.apache.flink.runtime.blob.BlobServerProtocol.MAX_LENGTH_SECURE_COOKIE;
 import static org.apache.flink.runtime.blob.BlobUtils.closeSilently;
 import static org.apache.flink.runtime.blob.BlobUtils.readFully;
 import static org.apache.flink.runtime.blob.BlobUtils.readLength;
@@ -110,7 +109,7 @@ class BlobServerConnection extends Thread {
 					keyLength = readLength(inputStream);
 				} catch(EOFException e) {
 					//might have received incomplete length
-					LOG.warn("received incomplete length received");
+					//LOG.warn("received incomplete length");
 					return;
 				}
 
@@ -497,19 +496,17 @@ class BlobServerConnection extends Thread {
 
 	private void validateSecureCookie(InputStream inputStream, int keyLength) throws IOException {
 
-		if (keyLength > MAX_LENGTH_SECURE_COOKIE) {
-			throw new IOException("Unexpected secure cookie length " + keyLength);
-		}
-
-		final byte[] buffer = new byte[BUFFER_SIZE];
+		//LOG.info("Fetching cookie with the passed length: {} to compare with server cookie: {}",
+		//		keyLength, blobServer.getSecureCookie());
+		final byte[] buffer = new byte[keyLength];
 
 		readFully(inputStream, buffer, 0, keyLength, "SecureCookie");
 
 		final String cookie = new String(buffer, 0, keyLength, BlobUtils.DEFAULT_CHARSET);
+		//LOG.info("Cookie received from the client: {}", cookie);
 
 		if(blobServer.isSecurityEnabled()) {
 			if(StringUtils.isBlank(cookie) || !cookie.equals(blobServer.getSecureCookie())) {
-				LOG.error("Missing valid secure cookie");
 				throw new IOException("Missing valid secure cookie");
 			}
 		}

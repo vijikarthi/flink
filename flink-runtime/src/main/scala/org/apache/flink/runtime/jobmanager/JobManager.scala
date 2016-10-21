@@ -1008,9 +1008,6 @@ class JobManager(
     case RequestBlobManagerPort =>
       sender ! decorateMessage(libraryCacheManager.getBlobServerPort)
 
-    case RequestBlobManagerSecureCookie =>
-      sender ! decorateMessage(libraryCacheManager.getSecureCookie)
-
     case RequestArchive =>
       sender ! decorateMessage(ResponseArchive(archive))
 

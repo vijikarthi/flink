@@ -25,6 +25,7 @@ import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.GlobalConfiguration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
 import org.apache.flink.runtime.akka.AkkaUtils;
+import org.apache.flink.runtime.blob.BlobUtils;
 import org.apache.flink.yarn.cli.FlinkYarnSessionCli;
 import org.apache.flink.runtime.jobmanager.HighAvailabilityMode;
 import org.apache.flink.runtime.security.SecurityContext;
@@ -74,7 +75,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.flink.configuration.ConfigConstants.DEFAULT_SECURITY_ENABLED;
 import static org.apache.flink.configuration.ConfigConstants.ENV_FLINK_LIB_DIR;
 import static org.apache.flink.yarn.cli.FlinkYarnSessionCli.CONFIG_FILE_LOG4J_NAME;
 import static org.apache.flink.yarn.cli.FlinkYarnSessionCli.CONFIG_FILE_LOGBACK_NAME;
@@ -339,8 +339,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			flinkConfiguration.setInteger(ConfigConstants.JOB_MANAGER_IPC_PORT_KEY, appReport.getRpcPort());
 
 			//get secure cookie
-			boolean securityEnabled = flinkConfiguration.getBoolean(ConfigConstants.SECURITY_ENABLED,
-																		DEFAULT_SECURITY_ENABLED);
+			boolean securityEnabled = BlobUtils.isSecurityEnabled(flinkConfiguration);
 			String secureCookie = flinkConfiguration.getString(ConfigConstants.SECURITY_COOKIE, null);
 			if(applicationID != null && securityEnabled && secureCookie == null) {
 				secureCookie = FlinkYarnSessionCli.getAppSecureCookie(applicationID);
@@ -715,7 +714,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 		}
 
 		//verify if security is enabled and cookie is passed
-		boolean securityEnabled = flinkConfiguration.getBoolean(ConfigConstants.SECURITY_ENABLED, DEFAULT_SECURITY_ENABLED);
+		boolean securityEnabled = BlobUtils.isSecurityEnabled(flinkConfiguration);
 		String secureCookie = flinkConfiguration.getString(ConfigConstants.SECURITY_COOKIE, null);
 		if(securityEnabled) {
 			if(secureCookie == null) {

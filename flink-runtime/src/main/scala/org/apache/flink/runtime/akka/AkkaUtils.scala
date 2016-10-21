@@ -20,16 +20,18 @@ package org.apache.flink.runtime.akka
 
 import java.io.IOException
 import java.net._
-import java.util.concurrent.{TimeUnit, Callable}
+import java.util.concurrent.{Callable, TimeUnit}
 
 import akka.actor._
 import akka.pattern.{ask => akkaAsk}
-import com.typesafe.config.{ConfigValueFactory, ConfigParseOptions, Config, ConfigFactory}
+import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigValueFactory}
 import org.apache.flink.configuration.{ConfigConstants, Configuration}
+import org.apache.flink.runtime.blob.BlobUtils
 import org.apache.flink.runtime.net.SSLUtils
 import org.apache.flink.util.NetUtils
-import org.jboss.netty.logging.{Slf4JLoggerFactory, InternalLoggerFactory}
+import org.jboss.netty.logging.{InternalLoggerFactory, Slf4JLoggerFactory}
 import org.slf4j.LoggerFactory
+
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -301,8 +303,7 @@ object AkkaUtils {
       ConfigConstants.DEFAULT_SECURITY_SSL_ALGORITHMS)
     val akkaSSLAlgorithms = akkaSSLAlgorithmsString.split(",").toList.mkString("[", ",", "]")
 
-    val securityEnabled = configuration.getBoolean(ConfigConstants.SECURITY_ENABLED,
-                                                    ConfigConstants.DEFAULT_SECURITY_ENABLED)
+    val securityEnabled = BlobUtils.isSecurityEnabled(configuration)
 
     val secureCookie = configuration.getString(ConfigConstants.SECURITY_COOKIE, null)
 

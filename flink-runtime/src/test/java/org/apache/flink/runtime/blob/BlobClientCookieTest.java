@@ -29,7 +29,7 @@ import java.security.MessageDigest;
 
 import static org.junit.Assert.fail;
 
-public class BlobClientSecureTest extends BlobClientTest {
+public class BlobClientCookieTest extends BlobClientTest {
 
 	/**
 	 * Starts the BLOB server with secure cookie enabled configuration
@@ -39,7 +39,23 @@ public class BlobClientSecureTest extends BlobClientTest {
 		try {
 			config.setBoolean(ConfigConstants.SECURITY_ENABLED, true);
 			config.setString(ConfigConstants.SECURITY_COOKIE, "foo");
+
+			config.setBoolean(ConfigConstants.SECURITY_SSL_ENABLED, true);
+			config.setBoolean(ConfigConstants.BLOB_SERVICE_SSL_ENABLED, false);
+			config.setString(ConfigConstants.SECURITY_SSL_KEYSTORE, "src/test/resources/local127.keystore");
+			config.setString(ConfigConstants.SECURITY_SSL_KEYSTORE_PASSWORD, "password");
+			config.setString(ConfigConstants.SECURITY_SSL_KEY_PASSWORD, "password");
+
 			BLOB_SERVER = new BlobServer(config);
+
+
+			clientConfig.setString(ConfigConstants.SECURITY_COOKIE, "foo");
+			clientConfig.setBoolean(ConfigConstants.SECURITY_ENABLED, true);
+
+			clientConfig.setBoolean(ConfigConstants.SECURITY_SSL_ENABLED, true);
+			clientConfig.setBoolean(ConfigConstants.BLOB_SERVICE_SSL_ENABLED, false);
+			clientConfig.setString(ConfigConstants.SECURITY_SSL_TRUSTSTORE, "src/test/resources/local127.truststore");
+			clientConfig.setString(ConfigConstants.SECURITY_SSL_TRUSTSTORE_PASSWORD, "password");
 		}
 		catch (IOException e) {
 			e.printStackTrace();
@@ -58,10 +74,17 @@ public class BlobClientSecureTest extends BlobClientTest {
 			md.update(testBuffer);
 
 			InetSocketAddress serverAddress = new InetSocketAddress("localhost", BLOB_SERVER.getPort());
-			Configuration flinkConfig = new Configuration();
-			flinkConfig.setString(ConfigConstants.SECURITY_COOKIE, "bar");
-			flinkConfig.setBoolean(ConfigConstants.SECURITY_ENABLED, true);
-			client = new BlobClient(serverAddress, flinkConfig);
+
+			Configuration clientConfig = new Configuration();
+			clientConfig.setString(ConfigConstants.SECURITY_COOKIE, "bar");
+			clientConfig.setBoolean(ConfigConstants.SECURITY_ENABLED, true);
+
+			clientConfig.setBoolean(ConfigConstants.SECURITY_SSL_ENABLED, true);
+			clientConfig.setBoolean(ConfigConstants.BLOB_SERVICE_SSL_ENABLED, false);
+			clientConfig.setString(ConfigConstants.SECURITY_SSL_TRUSTSTORE, "src/test/resources/local127.truststore");
+			clientConfig.setString(ConfigConstants.SECURITY_SSL_TRUSTSTORE_PASSWORD, "password");
+
+			client = new BlobClient(serverAddress, clientConfig);
 
 			// Store some data
 			client.put(testBuffer);

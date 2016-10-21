@@ -51,6 +51,8 @@ import io.netty.handler.codec.http.multipart.InterfaceHttpData.HttpDataType;
 
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.IllegalConfigurationException;
+import org.apache.flink.runtime.blob.BlobUtils;
 import org.apache.flink.util.ExceptionUtils;
 
 import java.io.File;
@@ -89,7 +91,11 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<HttpObject> 
 	private final String secureCookie;
 
 	public HttpRequestHandler(Configuration config, File tmpDir) {
+		boolean securityEnabled = BlobUtils.isSecurityEnabled(config);
 		secureCookie = config.getString(ConfigConstants.SECURITY_COOKIE, null);
+		if(securityEnabled && secureCookie == null) {
+			throw new IllegalConfigurationException(ConfigConstants.SECURITY_COOKIE + " must be configured.");
+		}
 		this.tmpDir = tmpDir;
 	}
 	

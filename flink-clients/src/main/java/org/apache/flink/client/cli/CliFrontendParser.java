@@ -91,7 +91,7 @@ public class CliFrontendParser {
 			"directory (" + ConfigConstants.SAVEPOINT_DIRECTORY_KEY + ") is used.");
 
 	static final Option SECURE_COOKIE_OPTION = new Option("k", "cookie", true,
-			"Secure cookie to authenticate");
+			"String to authorize Akka-based RPC communication");
 
 	static {
 		HELP_OPTION.setRequired(false);

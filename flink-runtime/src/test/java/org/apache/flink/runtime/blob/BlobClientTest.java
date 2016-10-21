@@ -54,6 +54,9 @@ public class BlobClientTest {
 	/** Flink configuration */
 	protected static Configuration config = new Configuration();
 
+	/** Client configuration instance */
+	protected static Configuration clientConfig = new Configuration();
+
 	/**
 	 * Starts the BLOB server.
 	 */
@@ -211,7 +214,7 @@ public class BlobClientTest {
 			BlobKey origKey = new BlobKey(md.digest());
 
 			InetSocketAddress serverAddress = new InetSocketAddress("localhost", BLOB_SERVER.getPort());
-			client = new BlobClient(serverAddress, config);
+			client = new BlobClient(serverAddress, clientConfig);
 
 			// Store the data
 			BlobKey receivedKey = client.put(testBuffer);
@@ -259,7 +262,7 @@ public class BlobClientTest {
 			BlobKey origKey = prepareTestFile(testFile);
 
 			InetSocketAddress serverAddress = new InetSocketAddress("localhost", BLOB_SERVER.getPort());
-			client = new BlobClient(serverAddress, config);
+			client = new BlobClient(serverAddress, clientConfig);
 
 			// Store the data
 			is = new FileInputStream(testFile);
@@ -305,7 +308,7 @@ public class BlobClientTest {
 			BlobClient client = null;
 			try {
 				final InetSocketAddress serverAddress = new InetSocketAddress("localhost", BLOB_SERVER.getPort());
-				client = new BlobClient(serverAddress, config);
+				client = new BlobClient(serverAddress, clientConfig);
 
 				// Store the data
 				client.put(jobID, key, testBuffer);
@@ -357,7 +360,7 @@ public class BlobClientTest {
 			try {
 
 				final InetSocketAddress serverAddress = new InetSocketAddress("localhost", BLOB_SERVER.getPort());
-				client = new BlobClient(serverAddress, config);
+				client = new BlobClient(serverAddress, clientConfig);
 
 				// Store the data
 				is = new FileInputStream(testFile);
@@ -398,12 +401,12 @@ public class BlobClientTest {
 
 		InetSocketAddress serverAddress = new InetSocketAddress("localhost", BLOB_SERVER.getPort());
 
-		List<BlobKey> blobKeys = BlobClient.uploadJarFiles(serverAddress, config,
+		List<BlobKey> blobKeys = BlobClient.uploadJarFiles(serverAddress, clientConfig,
 			Collections.singletonList(new Path(testFile.toURI())));
 
 		assertEquals(1, blobKeys.size());
 
-		try (BlobClient blobClient = new BlobClient(serverAddress, config)) {
+		try (BlobClient blobClient = new BlobClient(serverAddress, clientConfig)) {
 			InputStream is = blobClient.get(blobKeys.get(0));
 			validateGet(is, testFile);
 		}

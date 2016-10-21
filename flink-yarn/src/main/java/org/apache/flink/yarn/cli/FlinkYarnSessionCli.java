@@ -33,6 +33,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.GlobalConfiguration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
 import org.apache.flink.configuration.IllegalConfigurationException;
+import org.apache.flink.runtime.blob.BlobUtils;
 import org.apache.flink.runtime.security.SecurityContext;
 import org.apache.flink.yarn.AbstractYarnClusterDescriptor;
 import org.apache.flink.yarn.YarnClusterDescriptor;
@@ -64,7 +65,6 @@ import java.util.Properties;
 
 import static org.apache.flink.client.cli.CliFrontendParser.ADDRESS_OPTION;
 import static org.apache.flink.configuration.ConfigConstants.HA_ZOOKEEPER_NAMESPACE_KEY;
-import static org.apache.flink.configuration.ConfigConstants.DEFAULT_SECURITY_ENABLED;
 
 /**
  * Class handling the command line interface to the YARN session.
@@ -149,7 +149,7 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 		STREAMING = new Option(shortPrefix + "st", longPrefix + "streaming", false, "Start Flink in streaming mode");
 		NAME = new Option(shortPrefix + "nm", longPrefix + "name", true, "Set a custom name for the application on YARN");
 		ZOOKEEPER_NAMESPACE = new Option(shortPrefix + "z", longPrefix + "zookeeperNamespace", true, "Namespace to create the Zookeeper sub-paths for high availability mode");
-		SECURE_COOKIE_OPTION = new Option("k", "cookie", true,"Secure cookie to authenticate");
+		SECURE_COOKIE_OPTION = new Option("k", "cookie", true,"String to authorize Akka-based RPC communication");
 
 		ALL_OPTIONS = new Options();
 		ALL_OPTIONS.addOption(FLINK_JAR);
@@ -453,9 +453,6 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 						case "quit":
 						case "stop":
 							yarnCluster.shutdownCluster();
-							if (yarnCluster.hasBeenShutdown()) {
-								removeAppState(applicationId);
-							}
 							break label;
 						case "help":
 							System.err.println(HELP);
@@ -536,7 +533,7 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 
 			// Use cookie from CLI if provided, instead look for configuration setting and finally
 			// try to retrieve from the persisted file
-			boolean securityEnabled = config.getBoolean(ConfigConstants.SECURITY_ENABLED, DEFAULT_SECURITY_ENABLED);
+			boolean securityEnabled = BlobUtils.isSecurityEnabled(config);
 			LOG.debug("Security Enabled ? {}", securityEnabled);
 			if(securityEnabled ) {
 				if(secureCookieArg != null) {
@@ -567,7 +564,7 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 		String secureCookieArg = cmdLine.hasOption(SECURE_COOKIE_OPTION.getOpt()) ?
 				cmdLine.getOptionValue(SECURE_COOKIE_OPTION.getOpt()) : null;
 
-		boolean securityEnabled = config.getBoolean(ConfigConstants.SECURITY_ENABLED, DEFAULT_SECURITY_ENABLED);
+		boolean securityEnabled = BlobUtils.isSecurityEnabled(config);
 		LOG.debug("Security Enabled ? {}", securityEnabled);
 
 		//override cookie configuration if supplied through CLI
@@ -643,9 +640,7 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 			LOG.info("Going to use the ZK namespace: {}", zkNamespace);
 			yarnDescriptor.getFlinkConfiguration().setString(HA_ZOOKEEPER_NAMESPACE_KEY, zkNamespace);
 
-			boolean securityEnabled = yarnDescriptor.getFlinkConfiguration()
-													.getBoolean(ConfigConstants.SECURITY_ENABLED,
-																	DEFAULT_SECURITY_ENABLED);
+			boolean securityEnabled = BlobUtils.isSecurityEnabled(yarnDescriptor.getFlinkConfiguration());
 			LOG.debug("Security Enabled ? {}", securityEnabled);
 
 			//override cookie configuration if supplied through CLI
@@ -680,9 +675,7 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 				return 1;
 			}
 
-			boolean securityEnabled = yarnDescriptor.getFlinkConfiguration()
-													.getBoolean(ConfigConstants.SECURITY_ENABLED,
-																DEFAULT_SECURITY_ENABLED);
+			boolean securityEnabled = BlobUtils.isSecurityEnabled(yarnDescriptor.getFlinkConfiguration());
 			LOG.debug("Security Enabled ? {}", securityEnabled);
 
 			//override cookie configuration if supplied through CLI
@@ -818,7 +811,7 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 			config.save();
 			LOG.debug("Persisted cookie for the appID: {}", appId);
 		} catch(Exception e) {
-			LOG.error("Exception occurred while persisting app state for app id: {}. Exception: {}", appId, e);
+			LOG.error("Exception occurred while persisting app state for app id: {}", appId, e);
 			throw new RuntimeException(e);
 		}
 	}
@@ -855,7 +848,7 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 				throw new RuntimeException(errorMessage);
 			}
 		} catch(Exception e) {
-			LOG.error("Exception occurred while fetching cookie for app id: {} Exception: {}", appId, e);
+			LOG.error("Exception occurred while fetching cookie for app id: {}", appId, e);
 			throw new RuntimeException(e);
 		}
 
@@ -879,7 +872,7 @@ public class FlinkYarnSessionCli implements CustomCommandLine<YarnClusterClient>
 			config.save();
 			LOG.debug("Removed the reference for the appId: {} from {}", appId, path);
 		} catch(Exception e) {
-			LOG.warn("Exception occurred while fetching cookie for app id: {} Exception: {}", appId, e);
+			LOG.warn("Exception occurred while fetching cookie for app id: {}", appId, e);
 		}
 	}
 

@@ -183,4 +183,4 @@ jobmanager.web.port: 8081
 #security.enabled: false
 
 #secure random cookie to be used (auto-generated or static if value supplied)
-#security.cookie: foo
+#security.cookie: changeme

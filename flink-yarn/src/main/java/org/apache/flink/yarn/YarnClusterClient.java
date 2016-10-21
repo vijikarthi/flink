@@ -381,6 +381,8 @@ public class YarnClusterClient extends ClusterClient {
 			LOG.warn("Exception while deleting the JobManager address file", e);
 		}
 
+		FlinkYarnSessionCli.removeAppState(appId.toString());
+
 		if (sessionFilesDir != null) {
 			LOG.info("Deleting files in " + sessionFilesDir);
 			try {

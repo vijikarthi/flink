@@ -27,6 +27,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.GlobalConfiguration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
 import org.apache.flink.runtime.akka.AkkaUtils;
+import org.apache.flink.runtime.blob.BlobUtils;
 import org.apache.flink.runtime.clusterframework.BootstrapTools;
 import org.apache.flink.runtime.clusterframework.ContaineredTaskManagerParameters;
 import org.apache.flink.runtime.jobmanager.JobManager;
@@ -307,7 +308,7 @@ public class YarnApplicationMasterRunner {
 
 			Configuration flinkConfigClone = config.clone();
 			//reset cookie since we don't want to store it in the container path, it will stay only in-memory
-			if(flinkConfigClone.getBoolean(ConfigConstants.SECURITY_ENABLED, false) == true) {
+			if( BlobUtils.isSecurityEnabled(flinkConfigClone) == true) {
 				flinkConfigClone.setString(ConfigConstants.SECURITY_COOKIE, "");
 			}
 

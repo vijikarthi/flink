@@ -26,13 +26,13 @@ import org.apache.flink.client.program.StandaloneClusterClient;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
+import org.apache.flink.runtime.blob.BlobUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 
 import static org.apache.flink.client.CliFrontend.setJobManagerAddressInConfig;
-import static org.apache.flink.configuration.ConfigConstants.DEFAULT_SECURITY_ENABLED;
 
 /**
  * The default CLI which is used for interaction with standalone clusters.
@@ -102,7 +102,7 @@ public class DefaultCLI implements CustomCommandLine<StandaloneClusterClient> {
 
 	private void populateSecureCookieConfigurations(Configuration config, String secureCookieArg) {
 
-		boolean securityEnabled = config.getBoolean(ConfigConstants.SECURITY_ENABLED, DEFAULT_SECURITY_ENABLED);
+		boolean securityEnabled = BlobUtils.isSecurityEnabled(config);
 
 		if(securityEnabled) {
 			LOG.debug("Security enabled");

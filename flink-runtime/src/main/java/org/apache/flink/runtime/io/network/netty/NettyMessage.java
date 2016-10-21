@@ -65,9 +65,7 @@ abstract class NettyMessage {
 
 	static final int MAGIC_NUMBER = 0xBADC0FFE;
 
-	static final int BUFFER_SIZE = 65536;
-
-	static final Charset DEFAULT_CHARSET = Charset.forName("utf-8");
+	static final String NO_SECURE_COOKIE = "";
 
 	abstract ByteBuf write(ByteBufAllocator allocator) throws Exception;
 
@@ -76,17 +74,18 @@ abstract class NettyMessage {
 	// ------------------------------------------------------------------------
 
 	private static ByteBuf allocateBuffer(ByteBufAllocator allocator, byte id, String secureCookie) {
-		return allocateBuffer(allocator, id, secureCookie, 0);
+		return allocateBuffer(allocator, id, 0, secureCookie);
 	}
 
-	private static ByteBuf allocateBuffer(ByteBufAllocator allocator, byte id, String secureCookie, int length) {
-		secureCookie = (secureCookie == null || secureCookie.length() == 0) ? "": secureCookie;
+	private static ByteBuf allocateBuffer(ByteBufAllocator allocator, byte id, int length, String secureCookie) {
+		final Charset DEFAULT_CHARSET = Charset.forName("utf-8");
+		secureCookie = secureCookie == null ? "": secureCookie;
 		length+=secureCookie.getBytes().length;
 		final ByteBuf buffer = length != 0 ? allocator.directBuffer(HEADER_LENGTH + length) : allocator.directBuffer();
 		buffer.writeInt(HEADER_LENGTH + length);
 		buffer.writeInt(MAGIC_NUMBER);
 
-		buffer.writeInt(secureCookie.length());
+		buffer.writeInt(secureCookie.getBytes().length);
 		//write only if there is any cookie
 		if(secureCookie.length() > 0) {
 			buffer.writeBytes(secureCookie.getBytes(DEFAULT_CHARSET));
@@ -145,7 +144,7 @@ abstract class NettyMessage {
 		final byte[] secureCookie;
 
 		public NettyMessageDecoder(String secureCookie) {
-			secureCookie = (secureCookie == null || secureCookie.length() == 0) ? "": secureCookie;
+			secureCookie = secureCookie == null ? "": secureCookie;
 			this.secureCookie = secureCookie.getBytes();
 		}
 
@@ -164,7 +163,6 @@ abstract class NettyMessage {
 
 			if(cookieLength != secureCookie.length) {
 				String message = "Cookie length does not match with source cookie. Invalid secure cookie passed.";
-				LOG.error(message);
 				throw new IllegalStateException(message);
 			}
 
@@ -277,9 +275,9 @@ abstract class NettyMessage {
 			int length = 16 + 4 + 1 + 4 + buffer.getSize();
 
 			ByteBuf result = null;
-			final String NO_SECURE_COOKIE= "";
+
 			try {
-				result = allocateBuffer(allocator, ID, NO_SECURE_COOKIE, length);
+				result = allocateBuffer(allocator, ID, length, NO_SECURE_COOKIE);
 
 				receiverId.writeTo(result);
 				result.writeInt(sequenceNumber);
@@ -344,7 +342,6 @@ abstract class NettyMessage {
 			ByteBuf result = null;
 
 			ObjectOutputStream oos = null;
-			final String NO_SECURE_COOKIE= "";
 
 			try {
 				result = allocateBuffer(allocator, ID, NO_SECURE_COOKIE);
@@ -423,7 +420,7 @@ abstract class NettyMessage {
 
 		InputChannelID receiverId;
 
-		String secureCookie = "";
+		String secureCookie;
 
 		public PartitionRequest() {
 		}
@@ -432,7 +429,7 @@ abstract class NettyMessage {
 			this.partitionId = partitionId;
 			this.queueIndex = queueIndex;
 			this.receiverId = receiverId;
-			this.secureCookie = (secureCookie == null || secureCookie.length() == 0) ? "": secureCookie;
+			this.secureCookie = secureCookie == null ? "": secureCookie;
 		}
 
 		@Override
@@ -440,7 +437,7 @@ abstract class NettyMessage {
 			ByteBuf result = null;
 
 			try {
-				result = allocateBuffer(allocator, ID, secureCookie, 16 + 16 + 4 + 16);
+				result = allocateBuffer(allocator, ID, 16 + 16 + 4 + 16, secureCookie);
 
 				partitionId.getPartitionId().writeTo(result);
 				partitionId.getProducerId().writeTo(result);
@@ -481,7 +478,7 @@ abstract class NettyMessage {
 
 		ResultPartitionID partitionId;
 
-		String secureCookie = "";
+		String secureCookie;
 
 		public TaskEventRequest() {
 		}
@@ -491,7 +488,7 @@ abstract class NettyMessage {
 			this.event = event;
 			this.receiverId = receiverId;
 			this.partitionId = partitionId;
-			this.secureCookie = (secureCookie == null || secureCookie.length() == 0) ? "": secureCookie;
+			this.secureCookie = secureCookie == null ? "": secureCookie;
 		}
 
 		@Override
@@ -502,7 +499,7 @@ abstract class NettyMessage {
 				// TODO Directly serialize to Netty's buffer
 				ByteBuffer serializedEvent = EventSerializer.toSerializedEvent(event);
 
-				result = allocateBuffer(allocator, ID, secureCookie, 4 + serializedEvent.remaining() + 16 + 16 + 16);
+				result = allocateBuffer(allocator, ID, 4 + serializedEvent.remaining() + 16 + 16 + 16, secureCookie);
 
 				result.writeInt(serializedEvent.remaining());
 				result.writeBytes(serializedEvent);
@@ -553,14 +550,14 @@ abstract class NettyMessage {
 
 		InputChannelID receiverId;
 
-		String secureCookie = "";
+		String secureCookie;
 
 		public CancelPartitionRequest() {
 		}
 
 		public CancelPartitionRequest(InputChannelID receiverId, String secureCookie) {
 			this.receiverId = receiverId;
-			this.secureCookie = (secureCookie == null || secureCookie.length() == 0) ? "": secureCookie;
+			this.secureCookie = secureCookie == null ? "": secureCookie;
 		}
 
 		@Override
@@ -568,7 +565,7 @@ abstract class NettyMessage {
 			ByteBuf result = null;
 
 			try {
-				result = allocateBuffer(allocator, ID, secureCookie, 16);
+				result = allocateBuffer(allocator, ID, 16, secureCookie);
 				receiverId.writeTo(result);
 			}
 			catch (Throwable t) {
@@ -591,17 +588,17 @@ abstract class NettyMessage {
 	static class CloseRequest extends NettyMessage {
 
 		private static final byte ID = 5;
-		String secureCookie = "";
+		String secureCookie;
 
 		public CloseRequest() {}
 
 		public CloseRequest(String secureCookie) {
-			this.secureCookie = (secureCookie == null) ? "": secureCookie;
+			this.secureCookie = secureCookie == null ? "": secureCookie;
 		}
 
 		@Override
 		ByteBuf write(ByteBufAllocator allocator) throws Exception {
-			return allocateBuffer(allocator, ID, secureCookie, 0);
+			return allocateBuffer(allocator, ID, 0, secureCookie);
 		}
 
 		@Override

@@ -18,7 +18,6 @@
 
 package org.apache.flink.runtime.blob;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
@@ -96,12 +95,11 @@ public final class BlobClient implements Closeable {
 		this.socket = new Socket();
 
 		if(clientConfig != null) {
-			boolean securityEnabled = clientConfig.getBoolean(ConfigConstants.SECURITY_ENABLED,
-					ConfigConstants.DEFAULT_SECURITY_ENABLED);
+			boolean securityEnabled = BlobUtils.isSecurityEnabled(clientConfig);
 
 			this.secureCookie = clientConfig.getString(ConfigConstants.SECURITY_COOKIE, "");
 
-			if (securityEnabled && this.secureCookie == "") {
+			if (securityEnabled && this.secureCookie.equals("")) {
 				throw new IllegalConfigurationException(ConfigConstants.SECURITY_COOKIE + " must be configured.");
 			}
 		}
@@ -754,22 +752,7 @@ public final class BlobClient implements Closeable {
 		} else {
 			Object msg = JobManagerMessages.getRequestBlobManagerPort();
 			Future<Object> futureBlobPort = jobManager.ask(msg, askTimeout);
-
-			Object secureCookieMsg = JobManagerMessages.getRequestBlobManagerSecureCookie();
-			Future<Object> futureSecureCookie = jobManager.ask(secureCookieMsg, askTimeout);
-
 			try {
-				String secureCookie = null;
-
-				Object cookie = Await.result(futureSecureCookie, askTimeout);
-				if(cookie instanceof String) {
-					secureCookie = (String) cookie;
-				}
-
-				if(!StringUtils.isBlank(secureCookie)) {
-					LOG.debug("Received secure Cookie from JM");
-				}
-
 				// Retrieve address
 				Object result = Await.result(futureBlobPort, askTimeout);
 				if (result instanceof Integer) {

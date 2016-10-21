@@ -199,11 +199,6 @@ public final class BlobLibraryCacheManager extends TimerTask implements LibraryC
 		return blobService.getPort();
 	}
 
-	public String getSecureCookie() {
-		return blobService.getSecureCookie() == null
-				? "": blobService.getSecureCookie();
-	}
-
 	@Override
 	public void shutdown() throws IOException{
 		try {

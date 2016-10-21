@@ -20,6 +20,7 @@ package org.apache.flink.runtime.io.network.netty;
 
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.runtime.blob.BlobUtils;
 import org.apache.flink.runtime.net.SSLUtils;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.slf4j.Logger;
@@ -94,12 +95,11 @@ public class NettyConfig {
 
 		this.config = checkNotNull(config);
 
-		boolean security = config.getBoolean(ConfigConstants.SECURITY_ENABLED, false);
+		boolean security = BlobUtils.isSecurityEnabled(config);
 		this.secureCookie = config.getString(ConfigConstants.SECURITY_COOKIE, "");
 
-		if(security && this.secureCookie == "") {
-			LOG.error("Security is enabled but secure cookie is not provided");
-			throw new IllegalConfigurationException("Security is enabled but secure cookie is not provided");
+		if(security && this.secureCookie.equals("")) {
+			throw new IllegalConfigurationException(ConfigConstants.SECURITY_COOKIE + " must be configured.");
 		}
 
 		LOG.info(this.toString());

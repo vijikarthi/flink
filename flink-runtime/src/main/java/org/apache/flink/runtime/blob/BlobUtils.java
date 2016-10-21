@@ -21,8 +21,8 @@ package org.apache.flink.runtime.blob;
 import com.google.common.io.BaseEncoding;
 import org.apache.commons.io.FileUtils;
 import org.apache.flink.api.common.JobID;
-import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.util.IOUtils;
@@ -42,7 +42,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 
+import static org.apache.flink.configuration.ConfigConstants.SECURITY_ENABLED;
+import static org.apache.flink.configuration.ConfigConstants.SECURITY_SSL_ENABLED;
 import static org.apache.flink.configuration.ConfigConstants.DEFAULT_SECURITY_ENABLED;
+import static org.apache.flink.configuration.ConfigConstants.DEFAULT_SECURITY_SSL_ENABLED;
+import static org.apache.flink.configuration.ConfigConstants.SECURITY_COOKIE;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
@@ -400,20 +404,33 @@ public class BlobUtils {
 
 	/**
 	 * Utility method to validate secure cookie from Flink configuration instance
-	 * @throws
+	 * @throws IllegalConfigurationException
+	 * 			thrown if security is enabled and cookie is not provided
 	 */
 	public static String validateAndGetSecureCookie(Configuration configuration) {
 		String secureCookie = null;
-		if(configuration.getBoolean(ConfigConstants.SECURITY_ENABLED, DEFAULT_SECURITY_ENABLED) == true) {
-			secureCookie = configuration.getString(ConfigConstants.SECURITY_COOKIE, null);
+		if(isSecurityEnabled(configuration)) {
+			secureCookie = configuration.getString(SECURITY_COOKIE, null);
 			if(secureCookie == null) {
-				String message = "Missing " + ConfigConstants.SECURITY_COOKIE +
-						" configuration in Flink configuration file";
-				LOG.error(message);
-				throw new RuntimeException(message);
+				throw new IllegalConfigurationException(SECURITY_COOKIE + " must be configured.");
 			}
 		}
 		return secureCookie;
+	}
+
+	public static boolean isSecurityEnabled(Configuration configuration) {
+
+		boolean securityEnabled = configuration.getBoolean(SECURITY_ENABLED,
+				DEFAULT_SECURITY_ENABLED);
+		boolean transportSecurityEnabled = configuration.getBoolean(SECURITY_SSL_ENABLED,
+				DEFAULT_SECURITY_SSL_ENABLED);
+		if(securityEnabled) {
+			if(!transportSecurityEnabled) {
+				throw new IllegalConfigurationException(SECURITY_SSL_ENABLED + " must be configured.");
+			}
+			return true;
+		}
+		return false;
 	}
 
 	/**
