@@ -118,7 +118,6 @@ public class MesosTaskManagerRunner {
 
 		// Run the TM in the security context
 		SecurityUtils.SecurityConfiguration sc = new SecurityUtils.SecurityConfiguration(configuration);
-		sc.setHadoopConfiguration(HadoopUtils.getHadoopConfiguration());
 		SecurityUtils.install(sc);
 
 		try {

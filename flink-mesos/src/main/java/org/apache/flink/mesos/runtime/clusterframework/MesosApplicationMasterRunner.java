@@ -168,7 +168,6 @@ public class MesosApplicationMasterRunner {
 
 			// configure security
 			SecurityUtils.SecurityConfiguration sc = new SecurityUtils.SecurityConfiguration(config);
-			sc.setHadoopConfiguration(HadoopUtils.getHadoopConfiguration());
 			SecurityUtils.install(sc);
 
 			// run the actual work in the installed security context

@@ -583,11 +583,11 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			}
 		}
 
-		//check if there is a JAAS config file
-		File jaasConfigFile = new File(configurationDirectory + File.separator + SecurityUtils.JAAS_CONF_FILENAME);
-		if (jaasConfigFile.exists() && jaasConfigFile.isFile()) {
-			effectiveShipFiles.add(jaasConfigFile);
-		}
+//		//check if there is a JAAS config file
+//		File jaasConfigFile = new File(configurationDirectory + File.separator + SecurityUtils.JAAS_CONF_FILENAME);
+//		if (jaasConfigFile.exists() && jaasConfigFile.isFile()) {
+//			effectiveShipFiles.add(jaasConfigFile);
+//		}
 
 		addLibFolderToShipFiles(effectiveShipFiles);
 
