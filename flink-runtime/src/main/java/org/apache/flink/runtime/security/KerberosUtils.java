@@ -97,24 +97,28 @@ public class KerberosUtils {
 		checkNotNull(principal, "principal");
 
 
+		Map<String, String> keytabKerberosOptionsClone = new HashMap<>();
+		keytabKerberosOptionsClone.putAll(keytabKerberosOptions);
+
+
 		if(IBM_JAVA) {
-			keytabKerberosOptions.put("useKeytab", prependFileUri(keytab));
-			keytabKerberosOptions.put("credsType", "both");
+			keytabKerberosOptionsClone.put("useKeytab", prependFileUri(keytab));
+			keytabKerberosOptionsClone.put("credsType", "both");
 		} else {
-			keytabKerberosOptions.put("keyTab", keytab);
-			keytabKerberosOptions.put("doNotPrompt", "true");
-			keytabKerberosOptions.put("useKeyTab", "true");
-			keytabKerberosOptions.put("storeKey", "true");
+			keytabKerberosOptionsClone.put("keyTab", keytab);
+			keytabKerberosOptionsClone.put("doNotPrompt", "true");
+			keytabKerberosOptionsClone.put("useKeyTab", "true");
+			keytabKerberosOptionsClone.put("storeKey", "true");
 		}
 
-		keytabKerberosOptions.put("principal", principal);
-		keytabKerberosOptions.put("refreshKrb5Config", "true");
-		keytabKerberosOptions.putAll(debugOptions);
+		keytabKerberosOptionsClone.put("principal", principal);
+		keytabKerberosOptionsClone.put("refreshKrb5Config", "true");
+		keytabKerberosOptionsClone.putAll(debugOptions);
 
 		AppConfigurationEntry keytabKerberosAce = new AppConfigurationEntry(
 				KerberosUtil.getKrb5LoginModuleName(),
 				AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
-				keytabKerberosOptions);
+				keytabKerberosOptionsClone);
 
 		return keytabKerberosAce;
 	}
