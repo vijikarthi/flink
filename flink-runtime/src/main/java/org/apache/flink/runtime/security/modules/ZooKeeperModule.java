@@ -63,9 +63,13 @@ public class ZooKeeperModule implements SecurityModule {
 	public void uninstall() {
 		if(priorServiceName != null) {
 			System.setProperty(ZK_SASL_CLIENT_USERNAME, priorServiceName);
+		} else {
+			System.clearProperty(ZK_SASL_CLIENT_USERNAME);
 		}
 		if(priorLoginContextName != null) {
 			System.setProperty(ZK_LOGIN_CONTEXT_NAME, priorLoginContextName);
+		} else {
+			System.clearProperty(ZK_LOGIN_CONTEXT_NAME);
 		}
 	}
 

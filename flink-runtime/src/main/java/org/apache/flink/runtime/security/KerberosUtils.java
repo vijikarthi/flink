@@ -49,8 +49,6 @@ public class KerberosUtils {
 
 	private static final Map<String, String> kerberosCacheOptions = new HashMap<>();
 
-	private static final Map<String, String> keytabKerberosOptions = new HashMap<>();
-
 	private static final AppConfigurationEntry userKerberosAce;
 
 	static {
@@ -96,29 +94,26 @@ public class KerberosUtils {
 		checkNotNull(keytab, "keytab");
 		checkNotNull(principal, "principal");
 
-
-		Map<String, String> keytabKerberosOptionsClone = new HashMap<>();
-		keytabKerberosOptionsClone.putAll(keytabKerberosOptions);
-
+		Map<String, String> keytabKerberosOptions = new HashMap<>();
 
 		if(IBM_JAVA) {
-			keytabKerberosOptionsClone.put("useKeytab", prependFileUri(keytab));
-			keytabKerberosOptionsClone.put("credsType", "both");
+			keytabKerberosOptions.put("useKeytab", prependFileUri(keytab));
+			keytabKerberosOptions.put("credsType", "both");
 		} else {
-			keytabKerberosOptionsClone.put("keyTab", keytab);
-			keytabKerberosOptionsClone.put("doNotPrompt", "true");
-			keytabKerberosOptionsClone.put("useKeyTab", "true");
-			keytabKerberosOptionsClone.put("storeKey", "true");
+			keytabKerberosOptions.put("keyTab", keytab);
+			keytabKerberosOptions.put("doNotPrompt", "true");
+			keytabKerberosOptions.put("useKeyTab", "true");
+			keytabKerberosOptions.put("storeKey", "true");
 		}
 
-		keytabKerberosOptionsClone.put("principal", principal);
-		keytabKerberosOptionsClone.put("refreshKrb5Config", "true");
-		keytabKerberosOptionsClone.putAll(debugOptions);
+		keytabKerberosOptions.put("principal", principal);
+		keytabKerberosOptions.put("refreshKrb5Config", "true");
+		keytabKerberosOptions.putAll(debugOptions);
 
 		AppConfigurationEntry keytabKerberosAce = new AppConfigurationEntry(
 				KerberosUtil.getKrb5LoginModuleName(),
 				AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
-				keytabKerberosOptionsClone);
+				keytabKerberosOptions);
 
 		return keytabKerberosAce;
 	}

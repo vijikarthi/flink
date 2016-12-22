@@ -78,8 +78,10 @@ public class JaasModule implements SecurityModule {
 
 		// wire up the configured JAAS login contexts to use the krb5 entries
 		AppConfigurationEntry[] krb5Entries = getAppConfigurationEntries(securityConfig);
-		for (String app : securityConfig.getLoginContextNames()) {
-			currentConfig.addAppConfigurationEntry(app, krb5Entries);
+		if(krb5Entries != null) {
+			for (String app : securityConfig.getLoginContextNames()) {
+				currentConfig.addAppConfigurationEntry(app, krb5Entries);
+			}
 		}
 
 		javax.security.auth.login.Configuration.setConfiguration(currentConfig);
@@ -89,6 +91,8 @@ public class JaasModule implements SecurityModule {
 	public void uninstall() {
 		if(priorConfigFile != null) {
 			System.setProperty(JAVA_SECURITY_AUTH_LOGIN_CONFIG, priorConfigFile);
+		} else {
+			System.clearProperty(JAVA_SECURITY_AUTH_LOGIN_CONFIG);
 		}
 		javax.security.auth.login.Configuration.setConfiguration(priorConfig);
 	}
@@ -116,7 +120,7 @@ public class JaasModule implements SecurityModule {
 		} else if (userKerberosAce != null) {
 			appConfigurationEntry = new AppConfigurationEntry[]{userKerberosAce};
 		} else {
-			appConfigurationEntry = new AppConfigurationEntry[]{};
+			return null;
 		}
 
 		return appConfigurationEntry;
