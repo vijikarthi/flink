@@ -18,12 +18,14 @@
 
 package org.apache.flink.yarn;
 
+import org.apache.flink.api.java.hadoop.mapred.utils.HadoopUtils;
 import org.apache.flink.client.CliFrontend;
 import org.apache.flink.client.deployment.ClusterDescriptor;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.GlobalConfiguration;
-import org.apache.flink.configuration.HighAvailabilityOptions;
 import org.apache.flink.configuration.IllegalConfigurationException;
+import org.apache.flink.configuration.SecurityOptions;
+import org.apache.flink.configuration.HighAvailabilityOptions;
 import org.apache.flink.runtime.akka.AkkaUtils;
 import org.apache.flink.runtime.jobmanager.HighAvailabilityMode;
 import org.apache.hadoop.conf.Configuration;
@@ -403,6 +405,17 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 	@Override
 	public YarnClusterClient deploy() {
 		try {
+			boolean useTicketCache = flinkConfiguration.getBoolean(SecurityOptions.KERBEROS_LOGIN_USETICKETCACHE);
+			if(UserGroupInformation.isSecurityEnabled() && useTicketCache) {
+				UserGroupInformation loginUser = UserGroupInformation.getCurrentUser();
+				if (!loginUser.hasKerberosCredentials()) {
+					if (!HadoopUtils.hasHDFSDelegationToken()) {
+						LOG.error("Hadoop Security is enabled but current login user does not have Kerberos Credentials");
+						throw new RuntimeException("Hadoop Security is enabled but current login user " +
+								"does not have Kerberos Credentials");
+					}
+				}
+			}
 			return deployInternal();
 		} catch (Exception e) {
 			throw new RuntimeException("Couldn't deploy Yarn cluster", e);

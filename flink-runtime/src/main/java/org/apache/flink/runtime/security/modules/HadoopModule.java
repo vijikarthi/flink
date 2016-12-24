@@ -18,12 +18,10 @@
 package org.apache.flink.runtime.security.modules;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.api.java.hadoop.mapred.utils.HadoopUtils;
 import org.apache.flink.runtime.security.SecurityUtils;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.security.token.TokenIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +29,6 @@ import javax.security.auth.Subject;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Collection;
 
 /**
  * Responsible for installing a Hadoop login user.
@@ -97,30 +94,10 @@ public class HadoopModule implements SecurityModule {
 				loginUser = UserGroupInformation.getLoginUser();
 			}
 
-			if (UserGroupInformation.isSecurityEnabled() &&
-					StringUtils.isBlank(securityConfig.getKeytab()) &&
-					StringUtils.isBlank(securityConfig.getPrincipal()) &&
-					securityConfig.useTicketCache()) {
-
-				boolean delegationToken = false;
-
-				final Text HDFS_DELEGATION_KIND = new Text("HDFS_DELEGATION_TOKEN");
-
-				Collection<Token<? extends TokenIdentifier>> usrTok = loginUser.getTokens();
-
-				for (Token<? extends TokenIdentifier> token : usrTok) {
-					final Text id = new Text(token.getIdentifier());
-					LOG.debug("Found user token " + id + " with " + token);
-					if (token.getKind().equals(HDFS_DELEGATION_KIND)) {
-						delegationToken = true;
-					}
-				}
-
+			if (UserGroupInformation.isSecurityEnabled() && securityConfig.useTicketCache()) {
 				if (!loginUser.hasKerberosCredentials()) {
-					//throw an error in non-yarn deployment if kerberos cache is not available
-					if (!delegationToken) {
-						LOG.error("Hadoop Security is enabled but current login user does not have Kerberos Credentials");
-						throw new RuntimeException("Hadoop Security is enabled but current login user does not have Kerberos Credentials");
+					if (!HadoopUtils.hasHDFSDelegationToken()) {
+						LOG.warn("Hadoop Security is enabled but current login user does not have Kerberos Credentials");
 					}
 				}
 			}
