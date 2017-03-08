@@ -491,6 +491,11 @@ public final class ConfigConstants {
 
 	public static final String MESOS_RESOURCEMANAGER_FRAMEWORK_USER = "mesos.resourcemanager.framework.user";
 
+	public static final String MESOS_RESOURCEMANAGER_TASKS_HOSTNAME_OVERRIDE =
+			"mesos.resourcemanager.tasks.hostname-override";
+
+	public static final String MESOS_RESOURCEMANAGER_TASKS_BOOTSTRAP_CMD = "mesos.resourcemanager.tasks.cmd-prefix";
+
 	/**
 	 * Config parameter to override SSL support for the Artifact Server
 	 */

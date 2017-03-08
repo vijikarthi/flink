@@ -46,6 +46,7 @@ import org.apache.flink.runtime.clusterframework.overlays.HadoopUserOverlay;
 import org.apache.flink.runtime.clusterframework.overlays.KeytabOverlay;
 import org.apache.flink.runtime.clusterframework.overlays.Krb5ConfOverlay;
 import org.apache.flink.runtime.clusterframework.overlays.SSLStoreOverlay;
+import org.apache.flink.runtime.clusterframework.overlays.BootstrapCommandOverlay;
 import org.apache.flink.runtime.jobmanager.JobManager;
 import org.apache.flink.runtime.jobmanager.MemoryArchivist;
 import org.apache.flink.runtime.leaderretrieval.LeaderRetrievalService;
@@ -202,10 +203,19 @@ public class MesosApplicationMasterRunner {
 		try {
 			// ------- (1) load and parse / validate all configurations -------
 
-			// Note that we use the "appMasterHostname" given by the system, to make sure
-			// we use the hostnames consistently throughout akka.
-			// for akka "localhost" and "localhost.localdomain" are different actors.
-			final String appMasterHostname = InetAddress.getLocalHost().getHostName();
+			final String appMasterHostname;
+			//We will use JM RPC address property if it is supplied through configuration
+			final String jmRpcAddress = config.getString(ConfigConstants.JOB_MANAGER_IPC_ADDRESS_KEY, null);
+			if(jmRpcAddress != null) {
+				LOG.info("JM RPC address from Flink configuration file: {} ", jmRpcAddress);
+				appMasterHostname = jmRpcAddress;
+			} else {
+				// Note that we use the "appMasterHostname" given by the system, to make sure
+				// we use the hostnames consistently throughout akka.
+				// for akka "localhost" and "localhost.localdomain" are different actors.
+				appMasterHostname = InetAddress.getLocalHost().getHostName();
+			}
+			LOG.info("App Master Hostname to use: {}", appMasterHostname);
 
 			// Mesos configuration
 			final MesosConfiguration mesosConfig = createMesosConfig(config, appMasterHostname);
@@ -531,7 +541,8 @@ public class MesosApplicationMasterRunner {
 			HadoopUserOverlay.newBuilder().fromEnvironment(globalConfiguration).build(),
 			KeytabOverlay.newBuilder().fromEnvironment(globalConfiguration).build(),
 			Krb5ConfOverlay.newBuilder().fromEnvironment(globalConfiguration).build(),
-			SSLStoreOverlay.newBuilder().fromEnvironment(globalConfiguration).build()
+			SSLStoreOverlay.newBuilder().fromEnvironment(globalConfiguration).build(),
+			BootstrapCommandOverlay.newBuilder().fromEnvironment(globalConfiguration).build()
 		);
 
 		// apply the overlays

@@ -22,6 +22,7 @@ import com.netflix.fenzo.ConstraintEvaluator;
 import com.netflix.fenzo.TaskAssignmentResult;
 import com.netflix.fenzo.TaskRequest;
 import com.netflix.fenzo.VMTaskFitnessCalculator;
+import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.mesos.Utils;
 import org.apache.flink.mesos.scheduler.LaunchableTask;
@@ -187,6 +188,14 @@ public class LaunchableMesosWorker implements LaunchableTask {
 		final Protos.Environment.Builder env = cmd.getEnvironmentBuilder();
 		final StringBuilder jvmArgs = new StringBuilder();
 
+		//configure task manager hostname property if hostname override property is supplied
+		final String taskManagerHostNameOverride = containerSpec.getDynamicConfiguration()
+				.getString(ConfigConstants.MESOS_RESOURCEMANAGER_TASKS_HOSTNAME_OVERRIDE, null);
+		if(taskManagerHostNameOverride != null) {
+			final String taskManagerHostName = taskManagerHostNameOverride.replace("_TASK",taskID.getValue());
+			dynamicProperties.setString(ConfigConstants.TASK_MANAGER_HOSTNAME_KEY, taskManagerHostName);
+		}
+
 		// use the assigned ports for the TM
 		if (assignment.getAssignedPorts().size() < TM_PORT_KEYS.length) {
 			throw new IllegalArgumentException("unsufficient # of ports assigned");
@@ -226,8 +235,21 @@ public class LaunchableMesosWorker implements LaunchableTask {
 		// finalize JVM args
 		env.addVariables(variable(MesosConfigKeys.ENV_JVM_ARGS, jvmArgs.toString()));
 
+		String bootstrapCmd = containerSpec.getDynamicConfiguration()
+				.getString(ConfigConstants.MESOS_RESOURCEMANAGER_TASKS_BOOTSTRAP_CMD, null);
+		final String resolvableHostName = dynamicProperties
+				.getString(ConfigConstants.TASK_MANAGER_HOSTNAME_KEY, null);
+
 		// build the launch command w/ dynamic application properties
-		StringBuilder launchCommand = new StringBuilder("$FLINK_HOME/bin/mesos-taskmanager.sh ");
+		StringBuilder launchCommand = new StringBuilder();
+		if(bootstrapCmd != null && resolvableHostName != null) {
+			launchCommand.append(bootstrapCmd)
+							.append(" -resolve-hosts ")
+							.append(resolvableHostName)
+							.append(" && ");
+		}
+
+		launchCommand.append("$FLINK_HOME/bin/mesos-taskmanager.sh ");
 		launchCommand.append(ContainerSpecification.formatSystemProperties(dynamicProperties));
 		cmd.setValue(launchCommand.toString());
 
