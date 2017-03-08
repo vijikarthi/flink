@@ -56,6 +56,14 @@ public class MesosTaskManagerParameters {
 		key("mesos.resourcemanager.tasks.container.image.name")
 			.noDefaultValue();
 
+	public static final ConfigOption<String> MESOS_TM_HOSTNAME =
+			key(ConfigConstants.MESOS_RESOURCEMANAGER_TASKS_HOSTNAME)
+					.noDefaultValue();
+
+	public static final ConfigOption<String> MESOS_TM_BOOTSTRAP_CMD =
+			key(ConfigConstants.MESOS_RESOURCEMANAGER_TASKS_BOOTSTRAP_CMD)
+					.noDefaultValue();
+
 	/**
 	 * Value for {@code MESOS_RESOURCEMANAGER_TASKS_CONTAINER_TYPE} setting. Tells to use the Mesos containerizer.
 	 */
@@ -73,16 +81,24 @@ public class MesosTaskManagerParameters {
 
 	private final ContaineredTaskManagerParameters containeredParameters;
 
+	private final Option<String> bootstrapCommand;
+
+	private final Option<String> taskManagerHostName;
+
 	public MesosTaskManagerParameters(
 		double cpus,
 		ContainerType containerType,
 		Option<String> containerImageName,
-		ContaineredTaskManagerParameters containeredParameters) {
+		ContaineredTaskManagerParameters containeredParameters,
+		Option<String> bootstrapCommand,
+		Option<String> taskManagerHostName) {
 		requireNonNull(containeredParameters);
 		this.cpus = cpus;
 		this.containerType = containerType;
 		this.containerImageName = containerImageName;
 		this.containeredParameters = containeredParameters;
+		this.bootstrapCommand = bootstrapCommand;
+		this.taskManagerHostName = taskManagerHostName;
 	}
 
 	/**
@@ -115,6 +131,20 @@ public class MesosTaskManagerParameters {
 		return containeredParameters;
 	}
 
+	/**
+	 * Get the taskManager hostname.
+	 */
+	public Option<String> taskManagerHostName() {
+		return taskManagerHostName;
+	}
+
+	/**
+	 * Get the bootstrap command.
+	 */
+	public Option<String> bootstrapCommand() {
+		return bootstrapCommand;
+	}
+
 	@Override
 	public String toString() {
 		return "MesosTaskManagerParameters{" +
@@ -122,6 +152,8 @@ public class MesosTaskManagerParameters {
 			", containerType=" + containerType +
 			", containerImageName=" + containerImageName +
 			", containeredParameters=" + containeredParameters +
+			", taskManagerHostName=" + taskManagerHostName +
+			", bootstrapCommand=" + bootstrapCommand +
 			'}';
 	}
 
@@ -162,11 +194,19 @@ public class MesosTaskManagerParameters {
 				throw new IllegalConfigurationException("invalid container type: " + containerTypeString);
 		}
 
+		//obtain Task Manager Host Name from the configuration
+		Option<String> tmHostName = Option.apply(flinkConfig.getString(MESOS_TM_HOSTNAME));
+
+		//obtain bootstrap command from the configuration
+		Option<String> tmBootstrapCommand = Option.apply(flinkConfig.getString(MESOS_TM_BOOTSTRAP_CMD));
+
 		return new MesosTaskManagerParameters(
 			cpus,
 			containerType,
 			Option.apply(imageName),
-			containeredParameters);
+			containeredParameters,
+			tmBootstrapCommand,
+			tmHostName);
 	}
 
 	public enum ContainerType {
