@@ -421,7 +421,6 @@ public class RocksDBKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
 		 */
 		public void closeCheckpointStream() throws IOException {
 			if (outStream != null) {
-				stateBackend.cancelStreamRegistry.unregisterClosable(outStream);
 				snapshotResultStateHandle = closeSnapshotStreamAndGetHandle();
 			} else {
 				snapshotResultStateHandle = null;
@@ -592,6 +591,7 @@ public class RocksDBKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
 		}
 
 		private KeyGroupsStateHandle closeSnapshotStreamAndGetHandle() throws IOException {
+			stateBackend.cancelStreamRegistry.unregisterClosable(outStream);
 			StreamStateHandle stateHandle = outStream.closeAndGetHandle();
 			outStream = null;
 			return stateHandle != null ? new KeyGroupsStateHandle(keyGroupRangeOffsets, stateHandle) : null;
@@ -1155,6 +1155,8 @@ public class RocksDBKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
 
 	/**
 	 * For backwards compatibility, remove again later!
+	 *
+	 * @deprecated Internal method used for backwards compatibility.
 	 */
 	@Deprecated
 	private void restoreOldSavepointKeyedState(Collection<KeyedStateHandle> restoreState) throws Exception {

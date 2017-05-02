@@ -17,12 +17,10 @@
  */
 package org.apache.flink.table.api.scala.stream.sql
 
-import java.sql.Timestamp
-
 import org.apache.flink.api.scala._
 import org.apache.flink.table.api.TableException
 import org.apache.flink.table.api.scala._
-import org.apache.flink.table.plan.logical.{EventTimeTumblingGroupWindow, ProcessingTimeSessionGroupWindow, ProcessingTimeSlidingGroupWindow, ProcessingTimeTumblingGroupWindow}
+import org.apache.flink.table.plan.logical.{EventTimeTumblingGroupWindow, ProcessingTimeSessionGroupWindow, ProcessingTimeSlidingGroupWindow}
 import org.apache.flink.table.utils.TableTestUtil._
 import org.apache.flink.table.utils.{StreamTableTestUtil, TableTestBase}
 import org.junit.Test
@@ -85,94 +83,15 @@ class WindowAggregateTest extends TableTestBase {
   }
 
   @Test
-  def testNonPartitionedTumbleWindow() = {
-    val sql = "SELECT COUNT(*) FROM MyTable GROUP BY FLOOR(rowtime() TO HOUR)"
-    val expected =
-      unaryNode(
-        "DataStreamCalc",
-        unaryNode(
-          "DataStreamAggregate",
-          unaryNode(
-            "DataStreamCalc",
-            streamTableNode(0),
-            term("select", "1970-01-01 00:00:00 AS $f0")
-          ),
-          term("window", EventTimeTumblingGroupWindow(Some('w$), 'rowtime, 3600000.millis)),
-          term("select", "COUNT(*) AS EXPR$0")
-        ),
-        term("select", "EXPR$0")
-      )
-    streamUtil.verifySql(sql, expected)
-  }
-
-  @Test
-  def testPartitionedTumbleWindow1() = {
-    val sql = "SELECT a, COUNT(*) FROM MyTable GROUP BY a, FLOOR(rowtime() TO MINUTE)"
-    val expected =
-      unaryNode(
-        "DataStreamCalc",
-        unaryNode(
-          "DataStreamAggregate",
-          unaryNode(
-            "DataStreamCalc",
-            streamTableNode(0),
-            term("select", "a", "1970-01-01 00:00:00 AS $f1")
-          ),
-          term("groupBy", "a"),
-          term("window", EventTimeTumblingGroupWindow(Some('w$), 'rowtime, 60000.millis)),
-          term("select", "a", "COUNT(*) AS EXPR$1")
-        ),
-        term("select", "a", "EXPR$1")
-      )
-    streamUtil.verifySql(sql, expected)
-  }
-
-  @Test
-  def testPartitionedTumbleWindow2() = {
-    val sql = "SELECT a, SUM(c), b FROM MyTable GROUP BY a, FLOOR(rowtime() TO SECOND), b"
-    val expected =
-      unaryNode(
-        "DataStreamCalc",
-        unaryNode(
-          "DataStreamAggregate",
-          unaryNode(
-            "DataStreamCalc",
-            streamTableNode(0),
-            term("select", "a", "1970-01-01 00:00:00 AS $f1, b, c")
-          ),
-          term("groupBy", "a, b"),
-          term("window", EventTimeTumblingGroupWindow(Some('w$), 'rowtime, 1000.millis)),
-          term("select", "a", "b", "SUM(c) AS EXPR$1")
-        ),
-        term("select", "a", "EXPR$1", "b")
-      )
-    streamUtil.verifySql(sql, expected)
-  }
-
-  @Test
-  def testProcessingTime() = {
-    val sql = "SELECT COUNT(*) FROM MyTable GROUP BY FLOOR(proctime() TO HOUR)"
-    val expected =
-      unaryNode(
-        "DataStreamCalc",
-        unaryNode(
-          "DataStreamAggregate",
-          unaryNode(
-            "DataStreamCalc",
-            streamTableNode(0),
-            term("select", "1970-01-01 00:00:00 AS $f0")
-          ),
-          term("window", ProcessingTimeTumblingGroupWindow(Some('w$), 3600000.millis)),
-          term("select", "COUNT(*) AS EXPR$0")
-        ),
-        term("select", "EXPR$0")
-      )
-    streamUtil.verifySql(sql, expected)
-  }
-
-  @Test
   def testTumbleFunction() = {
-    val sql = "SELECT COUNT(*) FROM MyTable GROUP BY TUMBLE(rowtime(), INTERVAL '15' MINUTE)"
+
+    val sql =
+      "SELECT " +
+        "  COUNT(*), " +
+        "  TUMBLE_START(rowtime(), INTERVAL '15' MINUTE), " +
+        "  TUMBLE_END(rowtime(), INTERVAL '15' MINUTE)" +
+        "FROM MyTable " +
+        "GROUP BY TUMBLE(rowtime(), INTERVAL '15' MINUTE)"
     val expected =
       unaryNode(
         "DataStreamCalc",
@@ -183,18 +102,22 @@ class WindowAggregateTest extends TableTestBase {
             streamTableNode(0),
             term("select", "1970-01-01 00:00:00 AS $f0")
           ),
-          term("window", EventTimeTumblingGroupWindow(Some('w$), 'rowtime, 900000.millis)),
-          term("select", "COUNT(*) AS EXPR$0")
+          term("window", EventTimeTumblingGroupWindow('w$, 'rowtime, 900000.millis)),
+          term("select", "COUNT(*) AS EXPR$0, start('w$) AS w$start, end('w$) AS w$end")
         ),
-        term("select", "EXPR$0")
+        term("select", "EXPR$0, CAST(w$start) AS w$start, CAST(w$end) AS w$end")
       )
     streamUtil.verifySql(sql, expected)
   }
 
   @Test
   def testHoppingFunction() = {
-    val sql = "SELECT COUNT(*) FROM MyTable GROUP BY " +
-      "HOP(proctime(), INTERVAL '15' MINUTE, INTERVAL '1' HOUR)"
+    val sql =
+      "SELECT COUNT(*), " +
+        "  HOP_START(proctime(), INTERVAL '15' MINUTE, INTERVAL '1' HOUR), " +
+        "  HOP_END(proctime(), INTERVAL '15' MINUTE, INTERVAL '1' HOUR) " +
+        "FROM MyTable " +
+        "GROUP BY HOP(proctime(), INTERVAL '15' MINUTE, INTERVAL '1' HOUR)"
     val expected =
       unaryNode(
         "DataStreamCalc",
@@ -205,19 +128,24 @@ class WindowAggregateTest extends TableTestBase {
             streamTableNode(0),
             term("select", "1970-01-01 00:00:00 AS $f0")
           ),
-          term("window", ProcessingTimeSlidingGroupWindow(Some('w$),
+          term("window", ProcessingTimeSlidingGroupWindow('w$,
             3600000.millis, 900000.millis)),
-          term("select", "COUNT(*) AS EXPR$0")
+          term("select", "COUNT(*) AS EXPR$0, start('w$) AS w$start, end('w$) AS w$end")
         ),
-        term("select", "EXPR$0")
+        term("select", "EXPR$0, CAST(w$start) AS w$start, CAST(w$end) AS w$end")
       )
     streamUtil.verifySql(sql, expected)
   }
 
   @Test
   def testSessionFunction() = {
-    val sql = "SELECT COUNT(*) FROM MyTable GROUP BY " +
-      "SESSION(proctime(), INTERVAL '15' MINUTE)"
+    val sql =
+      "SELECT " +
+        "  COUNT(*), " +
+        "  SESSION_START(proctime(), INTERVAL '15' MINUTE), " +
+        "  SESSION_END(proctime(), INTERVAL '15' MINUTE) " +
+        "FROM MyTable " +
+        "GROUP BY SESSION(proctime(), INTERVAL '15' MINUTE)"
     val expected =
       unaryNode(
         "DataStreamCalc",
@@ -228,10 +156,10 @@ class WindowAggregateTest extends TableTestBase {
             streamTableNode(0),
             term("select", "1970-01-01 00:00:00 AS $f0")
           ),
-          term("window", ProcessingTimeSessionGroupWindow(Some('w$), 900000.millis)),
-          term("select", "COUNT(*) AS EXPR$0")
+          term("window", ProcessingTimeSessionGroupWindow('w$, 900000.millis)),
+          term("select", "COUNT(*) AS EXPR$0, start('w$) AS w$start, end('w$) AS w$end")
         ),
-        term("select", "EXPR$0")
+        term("select", "EXPR$0, CAST(w$start) AS w$start, CAST(w$end) AS w$end")
       )
     streamUtil.verifySql(sql, expected)
   }
@@ -588,7 +516,7 @@ class WindowAggregateTest extends TableTestBase {
       )
     streamUtil.verifySql(sql, expected)
   }
-  
+
   @Test
   def testBoundPartitionedProcTimeWindowWithRowRange() = {
     val sql = "SELECT " +

@@ -201,6 +201,18 @@ object FunctionCatalog {
     "mod" -> classOf[Mod],
     "sqrt" -> classOf[Sqrt],
     "minusPrefix" -> classOf[UnaryMinus],
+    "sin" -> classOf[Sin],
+    "cos" -> classOf[Cos],
+    "tan" -> classOf[Tan],
+    "cot" -> classOf[Cot],
+    "asin" -> classOf[Asin],
+    "acos" -> classOf[Acos],
+    "atan" -> classOf[Atan],
+    "degrees" -> classOf[Degrees],
+    "radians" -> classOf[Radians],
+    "sign" -> classOf[Sign],
+    "round" -> classOf[Round],
+    "pi" -> classOf[Pi],
 
     // temporal functions
     "extract" -> classOf[Extract],
@@ -348,12 +360,30 @@ class BasicOperatorTable extends ReflectiveSqlOperatorTable {
     SqlStdOperatorTable.QUARTER,
     SqlStdOperatorTable.SCALAR_QUERY,
     SqlStdOperatorTable.EXISTS,
+    SqlStdOperatorTable.SIN,
+    SqlStdOperatorTable.COS,
+    SqlStdOperatorTable.TAN,
+    SqlStdOperatorTable.COT,
+    SqlStdOperatorTable.ASIN,
+    SqlStdOperatorTable.ACOS,
+    SqlStdOperatorTable.ATAN,
+    SqlStdOperatorTable.DEGREES,
+    SqlStdOperatorTable.RADIANS,
+    SqlStdOperatorTable.SIGN,
+    SqlStdOperatorTable.ROUND,
+    SqlStdOperatorTable.PI,
     // EXTENSIONS
     EventTimeExtractor,
     ProcTimeExtractor,
     SqlStdOperatorTable.TUMBLE,
+    SqlStdOperatorTable.TUMBLE_START,
+    SqlStdOperatorTable.TUMBLE_END,
     SqlStdOperatorTable.HOP,
-    SqlStdOperatorTable.SESSION
+    SqlStdOperatorTable.HOP_START,
+    SqlStdOperatorTable.HOP_END,
+    SqlStdOperatorTable.SESSION,
+    SqlStdOperatorTable.SESSION_START,
+    SqlStdOperatorTable.SESSION_END
   )
 
   builtInSqlOperators.foreach(register)

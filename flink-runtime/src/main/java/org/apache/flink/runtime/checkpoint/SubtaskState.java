@@ -19,11 +19,15 @@
 package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.runtime.state.ChainedStateHandle;
+import org.apache.flink.runtime.state.CompositeStateHandle;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.OperatorStateHandle;
+import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.runtime.state.StateObject;
 import org.apache.flink.runtime.state.StateUtil;
 import org.apache.flink.runtime.state.StreamStateHandle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
@@ -33,12 +37,17 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * Container for the chained state of one parallel subtask of an operator/task. This is part of the
  * {@link TaskState}.
  */
-public class SubtaskState implements StateObject {
+public class SubtaskState implements CompositeStateHandle {
+
+	private static final Logger LOG = LoggerFactory.getLogger(SubtaskState.class);
 
 	private static final long serialVersionUID = -2394696997971923995L;
 
 	/**
 	 * Legacy (non-repartitionable) operator state.
+	 *
+	 * @deprecated Non-repartitionable operator state that has been deprecated.
+	 * Can be removed when we remove the APIs for non-repartitionable operator state.
 	 */
 	@Deprecated
 	private final ChainedStateHandle<StreamStateHandle> legacyOperatorState;
@@ -101,6 +110,10 @@ public class SubtaskState implements StateObject {
 
 	// --------------------------------------------------------------------------------------------
 
+	/**
+	 * @deprecated Non-repartitionable operator state that has been deprecated.
+	 * Can be removed when we remove the APIs for non-repartitionable operator state.
+	 */
 	@Deprecated
 	public ChainedStateHandle<StreamStateHandle> getLegacyOperatorState() {
 		return legacyOperatorState;
@@ -123,19 +136,33 @@ public class SubtaskState implements StateObject {
 	}
 
 	@Override
-	public long getStateSize() {
-		return stateSize;
+	public void discardState() {
+		try {
+			StateUtil.bestEffortDiscardAllStateObjects(
+				Arrays.asList(
+					legacyOperatorState,
+					managedOperatorState,
+					rawOperatorState,
+					managedKeyedState,
+					rawKeyedState));
+		} catch (Exception e) {
+			LOG.warn("Error while discarding operator states.", e);
+		}
 	}
 
 	@Override
-	public void discardState() throws Exception {
-		StateUtil.bestEffortDiscardAllStateObjects(
-				Arrays.asList(
-						legacyOperatorState,
-						managedOperatorState,
-						rawOperatorState,
-						managedKeyedState,
-						rawKeyedState));
+	public void registerSharedStates(SharedStateRegistry sharedStateRegistry) {
+		// No shared states
+	}
+
+	@Override
+	public void unregisterSharedStates(SharedStateRegistry sharedStateRegistry) {
+		// No shared states
+	}
+
+	@Override
+	public long getStateSize() {
+		return stateSize;
 	}
 
 	// --------------------------------------------------------------------------------------------
@@ -199,7 +226,7 @@ public class SubtaskState implements StateObject {
 				", operatorStateFromBackend=" + managedOperatorState +
 				", operatorStateFromStream=" + rawOperatorState +
 				", keyedStateFromBackend=" + managedKeyedState +
-				", keyedStateHandleFromStream=" + rawKeyedState +
+				", keyedStateFromStream=" + rawKeyedState +
 				", stateSize=" + stateSize +
 				'}';
 	}
