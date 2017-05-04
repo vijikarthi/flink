@@ -40,6 +40,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.flink.configuration.ConfigConstants.ENV_FLINK_CONF_DIR;
+import static org.apache.flink.configuration.ConfigConstants.ENV_FLINK_HOME_DIR;
 import static org.apache.flink.mesos.Utils.variable;
 import static org.apache.flink.mesos.Utils.range;
 import static org.apache.flink.mesos.Utils.ranges;
@@ -226,6 +228,16 @@ public class LaunchableMesosWorker implements LaunchableTask {
 		}
 		for (Map.Entry<String, String> entry : containerSpec.getEnvironmentVariables().entrySet()) {
 			env.addVariables(variable(entry.getKey(), entry.getValue()));
+		}
+
+		final String ENV_MESOS_SANDBOX_DIR = "MESOS_SANDBOX";
+		Map<String,String> systemEnv = System.getenv();
+		LOG.info("System environment variables: {}", systemEnv);
+		if(systemEnv.containsKey(ENV_MESOS_SANDBOX_DIR)) {
+			final String mesosSandboxDir = systemEnv.get(ENV_MESOS_SANDBOX_DIR);
+			LOG.info("Configuring Flink home/conf environment variables: mesosSandboxDir={}", mesosSandboxDir);
+			env.addVariables(variable(ENV_FLINK_HOME_DIR, mesosSandboxDir+"/flink"));
+			env.addVariables(variable(ENV_FLINK_CONF_DIR, mesosSandboxDir+"/flink/conf"));
 		}
 
 		// propagate the Mesos task ID to the TM
